@@ -1,0 +1,42 @@
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.so
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+meu_ambiente/
+automacao/meu_ambiente/
+
+# Streamlit / segredos
+.streamlit/secrets.toml
+.env
+.env.local
+
+# Dados locais opcionais
+automacao/data/
+
+# Saídas / rascunhos locais (não versionar)
+Parecer gerado  AI/
+
+# Utilitário local (não faz parte do app Streamlit)
+/criar_modelo_artigo_abnt.py
+
+# Ferramentas / caches
+pypdf/
+pypdf-*.dist-info/
+automacao_deps/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
