@@ -1702,3 +1702,15 @@ Coordenador-Geral de Modernização Urbana — CGMUR/DAC/SNDUM-MCID"""
 
     md_bruto = "\n\n".join([cabecalho, sec1, sec2, sec3, sec4, sec5, sec6, sec7, sec8]) + rodape
     return _limpar_cabecalhos_duplicados(md_bruto)
+
+
+def gerar_portaria_md(*args, **kwargs) -> str:
+    """
+    Mesma estrutura técnica do parecer de mérito, com titulação e referências
+    ajustadas para o fluxo de portarias (Debêntures).
+    """
+    md = gerar_parecer_md(*args, **kwargs)
+    md = md.replace("# Parecer de Mérito", "# Portaria administrativa")
+    md = md.replace("Parecer de Mérito —", "Portaria administrativa —")
+    md = md.replace("Parecer de Mérito sobre", "Portaria sobre")
+    return md

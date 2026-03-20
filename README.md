@@ -16,22 +16,55 @@ git clone https://github.com/victorpeborges-ADS/sistema-debentures-mcid.git
 cd sistema-debentures-mcid/automacao
 ```
 
+## Navegação (repositório vs gerador)
+
+O sistema separa **leitura** (repositórios com filtros e pré-visualização) de **escrita** (geradores com assistente RAG restrito ao documento em contexto). Não há “aba de base de dados” para o utilizador final — apenas repositórios de ficheiros. Detalhes: `automacao/docs/ARQUITETURA_UI_UX_RAG.md`.
+
 ## Diferença em relação ao Pro-Cidades
 
 - Interface, títulos, nomes de ficheiros exportados e porta do Streamlit (**8502**) são específicos deste sistema.
 - O **Pro-Cidades** continua a usar a pasta e a porta próprias (por exemplo **8501**), podendo os dois correr em paralelo na mesma máquina.
+- Tema **escuro** por defeito (produtividade / leitura prolongada), configurável em `automacao/.streamlit/config.toml`.
 
-## Como executar (Mac)
+## Como executar (terminal)
+
+> **Importante:** `/caminho/para/...` nos exemplos abaixo é **só um marcador**. No Mac/Linux use o caminho **real** até à pasta `automacao` (ex.: `cd ~/MCID/Sistema_Debentures/automacao`). O ficheiro `requirements.txt` e o `app.py` estão **dentro** de `automacao/`, não na pasta pai `Sistema_Debentures`.
+
+Na **primeira vez**, crie o ambiente e instale dependências **já dentro de `automacao`**:
 
 ```bash
-cd /caminho/para/Sistema_Debentures/automacao
-source meu_ambiente/bin/activate   # ou .venv, conforme a sua instalação
+cd ~/MCID/Sistema_Debentures/automacao    # ajuste ao seu disco (ou: cd sistema-debentures-mcid/automacao)
+python3 -m venv meu_ambiente              # ou: python3 -m venv .venv
+source meu_ambiente/bin/activate          # Windows: meu_ambiente\Scripts\activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+**Sempre que for usar** o sistema (com o venv ativo):
+
+```bash
+cd ~/MCID/Sistema_Debentures/automacao
+source meu_ambiente/bin/activate
 streamlit run app.py --server.port=8502 --server.address=127.0.0.1
 ```
 
-Ou use o duplo clique em `automacao/iniciar_mac.command` (após `instalar_mac.command`).
-
 Abra no navegador: **http://127.0.0.1:8502**
+
+Opcional (PostgreSQL): defina `DATABASE_URL` no ambiente ou em `automacao/.env` (ver `.env.example`).
+
+**Se aparecer `No module named 'sqlalchemy'`** depois de `pip install -r requirements.txt`, o executável `pip` pode estar a apontar para outro projeto. Reinstale com o Python deste ambiente:
+
+```bash
+cd ~/MCID/Sistema_Debentures/automacao   # ajuste o caminho
+source meu_ambiente/bin/activate
+python -m pip install -r requirements.txt
+```
+
+Ou recrie o venv: `rm -rf meu_ambiente` e volte a correr `instalar_mac.command`.
+
+### macOS (atalhos)
+
+Duplo clique em `automacao/instalar_mac.command` (primeira vez), depois `iniciar_mac.command` ou os comandos acima.
 
 ## Instalação em outras máquinas
 

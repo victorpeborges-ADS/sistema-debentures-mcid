@@ -56,8 +56,9 @@ fi
 echo ""
 echo "[2/4] Instalando dependências (pode levar alguns minutos)..."
 source meu_ambiente/bin/activate
-pip install --quiet --upgrade pip
-pip install --quiet -r requirements.txt
+# Usar sempre python -m pip (evita pip a apontar para outro venv se o ambiente foi copiado ou corrompido)
+python -m pip install --quiet --upgrade pip
+python -m pip install --quiet -r requirements.txt
 echo "      Dependências instaladas."
 
 # ---- Baixar modelo Ollama ----

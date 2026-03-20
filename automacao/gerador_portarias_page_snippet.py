@@ -1,296 +1,3 @@
-"""
-App Streamlit — Gerador Automatizado de Parecer de Mérito — Debêntures Incentivadas (MCID).
-Acesso via intranet para submissão de propostas pela equipe.
-"""
-
-import json
-import logging
-import os
-from datetime import datetime
-import requests
-import streamlit as st
-
-from fontes_publicas import (
-    ibge_listar_estados,
-    ibge_listar_municipios,
-    ibge_dados_completos,
-    capag_buscar_municipio,
-    legislacao_verificar,
-    atlas_buscar_idh,
-    sebrae_buscar_municipio,
-    planalto_buscar_todas,
-    SEBRAE_BASE,
-)
-from md_para_docx import md_para_docx_bytes
-from llm_client import LLMConfig, testar_conexao, DESCRICAO_PRIVACIDADE, suporta_visao
-from branding import (
-    APP_PAGE_TITLE,
-    APP_PAGE_ICON,
-    APP_ACCESS_TITLE,
-    APP_VERSION_CAPTION,
-    EXPORT_DOCX_NAME,
-    EXPORT_MD_NAME,
-    PROGRESS_LEGIS_MCID,
-    METRICA_LEGIS_MCID,
-    SUBHEADER_LEGIS_MCID,
-    RAPIDO_HEADER,
-    texto_info_submissao_rapida,
-)
-from motor import (
-    extrair_texto_pdf,
-    extrair_texto_arquivo,
-    extrair_textos_multiplos,
-    detectar_formato,
-    _EXTENSOES_SUPORTADAS,
-    buscar_url_contexto,
-    preparar_contexto_adicional,
-    chamada1_extracao,
-    chamada2_sumario,
-    chamada3_analise,
-    chamada4_checklist,
-    chamada5_contexto_objeto,
-    avaliar_conformidade,
-    avaliar_capag,
-    conformidade_texto,
-    gerar_parecer_md,
-    CHECKLIST_ITEMS,
-)
-from assistente_rag import render_painel_chat_documento
-from ui_navegacao import (
-    render_aba_enviar_ao_repositorio,
-    render_repositorio_pareceres,
-    render_repositorio_portarias,
-)
-from gerador_portarias_page import render_gerador_portarias
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-st.set_page_config(
-    page_title=APP_PAGE_TITLE,
-    page_icon=APP_PAGE_ICON,
-    layout="wide",
-)
-
-# ---------------------------------------------------------------------------
-# Autenticacao simples
-# ---------------------------------------------------------------------------
-
-def check_password() -> bool:
-    correct = os.environ.get("APP_PASSWORD")
-    if not correct:
-        try:
-            correct = st.secrets.get("app_password")
-        except (KeyError, FileNotFoundError):
-            pass
-    if not correct:
-        return True  # Sem senha configurada = acesso livre (apenas intranet)
-
-    if "authenticated" not in st.session_state:
-        st.session_state.authenticated = False
-
-    if st.session_state.authenticated:
-        return True
-
-    st.title(APP_ACCESS_TITLE)
-    pwd = st.text_input("Senha de acesso:", type="password")
-    if st.button("Entrar"):
-        if pwd == correct:
-            st.session_state.authenticated = True
-            st.rerun()
-        else:
-            st.error("Senha incorreta.")
-    return False
-
-
-if not check_password():
-    st.stop()
-
-# ---------------------------------------------------------------------------
-# Sidebar — Configuração do provedor LLM
-# ---------------------------------------------------------------------------
-
-with st.sidebar:
-    st.header("Configuração")
-
-    _provider_labels = {
-        "ollama":       "🖥️ Local (Ollama — privado)",
-        "groq":         "⚡ Groq API (gratuito)",
-        "mistral":      "☁️ Mistral AI (gratuito, europeu)",
-        "openai":       "☁️ OpenAI API",
-        "azure_openai": "☁️ Azure OpenAI (Governo)",
-        "anthropic":    "☁️ Claude (Anthropic)",
-    }
-    # Nomes curtos para uso nos textos de progresso
-    _provider_curto = {
-        "ollama":       "Ollama",
-        "groq":         "Groq",
-        "mistral":      "Mistral AI",
-        "openai":       "OpenAI",
-        "azure_openai": "Azure OpenAI",
-        "anthropic":    "Claude",
-    }
-    _provider_keys = list(_provider_labels.keys())
-
-    provider = st.selectbox(
-        "Provedor de IA:",
-        options=_provider_keys,
-        format_func=lambda k: _provider_labels[k],
-        index=0,
-        key="llm_provider",
-    )
-
-    info = DESCRICAO_PRIVACIDADE[provider]
-    st.caption(info["privacidade"])
-    st.caption(f"Velocidade: {info['velocidade']}")
-    st.caption(f"Custo estimado: {info['custo']}")
-
-    st.divider()
-
-    # ---- Configurações específicas por provedor ----
-    llm_cfg_kwargs = {"provider": provider, "timeout": 600}
-
-    if provider == "ollama":
-        default_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-        try:
-            default_host = st.secrets.get("ollama_host", default_host)
-        except (KeyError, FileNotFoundError):
-            pass
-        llm_cfg_kwargs["ollama_host"] = st.text_input("Host Ollama:", value=default_host)
-        llm_cfg_kwargs["ollama_model"] = st.selectbox(
-            "Modelo:",
-            ["qwen2.5:7b", "qwen2.5:14b", "llama3.1:8b", "mistral:7b"],
-        )
-
-    elif provider == "openai":
-        st.markdown("[Obter API key →](https://platform.openai.com/api-keys)",
-                    unsafe_allow_html=False)
-        llm_cfg_kwargs["openai_api_key"] = st.text_input(
-            "API Key OpenAI:", type="password", placeholder="sk-..."
-        )
-        llm_cfg_kwargs["openai_model"] = st.selectbox(
-            "Modelo:",
-            ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"],
-            help="gpt-4o-mini: mais barato | gpt-4o: máxima qualidade",
-        )
-
-    elif provider == "azure_openai":
-        st.info("Recomendado para uso em órgãos federais. Entre em contato com a TI do Ministério para obter as credenciais Azure.")
-        llm_cfg_kwargs["azure_endpoint"] = st.text_input(
-            "Endpoint Azure:", placeholder="https://meu-recurso.openai.azure.com/"
-        )
-        llm_cfg_kwargs["azure_api_key"] = st.text_input(
-            "API Key Azure:", type="password"
-        )
-        llm_cfg_kwargs["azure_deployment"] = st.text_input(
-            "Nome do Deployment:", placeholder="gpt-4o-mcid"
-        )
-
-    elif provider == "groq":
-        st.markdown("[Obter API key gratuita →](https://console.groq.com/keys)",
-                    unsafe_allow_html=False)
-        llm_cfg_kwargs["groq_api_key"] = st.text_input(
-            "API Key Groq:", type="password", placeholder="gsk_..."
-        )
-        llm_cfg_kwargs["groq_model"] = st.selectbox(
-            "Modelo:",
-            ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"],
-            help="70b-versatile: melhor qualidade | 8b-instant: mais rápido",
-        )
-
-    elif provider == "mistral":
-        st.markdown("[Obter API key gratuita →](https://console.mistral.ai/)",
-                    unsafe_allow_html=False)
-        llm_cfg_kwargs["mistral_api_key"] = st.text_input(
-            "API Key Mistral:", type="password"
-        )
-        llm_cfg_kwargs["mistral_model"] = st.selectbox(
-            "Modelo:",
-            ["mistral-small-latest", "mistral-large-latest"],
-            help="small: gratuito | large: pago, maior qualidade",
-        )
-
-    elif provider == "anthropic":
-        st.markdown("[Obter API key →](https://console.anthropic.com/)",
-                    unsafe_allow_html=False)
-        llm_cfg_kwargs["anthropic_api_key"] = st.text_input(
-            "API Key Anthropic:", type="password", placeholder="sk-ant-..."
-        )
-        llm_cfg_kwargs["anthropic_model"] = st.selectbox(
-            "Modelo:",
-            ["claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022"],
-            help="Haiku: mais barato | Sonnet: máxima qualidade",
-        )
-
-    llm_config = LLMConfig(**llm_cfg_kwargs)
-    _ia_label = _provider_curto.get(provider, provider)
-
-    if st.button("Testar conexão"):
-        with st.spinner("Testando..."):
-            ok, msg = testar_conexao(llm_config)
-        if ok:
-            st.success(msg)
-            if provider == "ollama":
-                st.info("Sem GPU: cada seção pode levar 3–8 min. Aguarde sem fechar o navegador.")
-        else:
-            st.error(msg)
-
-    st.divider()
-    st.caption(APP_VERSION_CAPTION)
-    _logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo_mcid.png")
-    if os.path.exists(_logo_path):
-        st.image(_logo_path, width="stretch")
-
-# ---------------------------------------------------------------------------
-# Estado da sessao
-# ---------------------------------------------------------------------------
-
-for key in ["texto_pdf", "meta_arquivos", "dados_extraidos", "dados_ibge", "dados_capag",
-            "dados_legis", "dados_idh", "dados_sebrae", "dados_planalto", "conformidade", "capag_result",
-            "sumario", "analise", "checklist", "parecer_md", "portaria_md",
-            "municipio_selecionado", "uf_selecionada",
-            "ctx_urls_conteudo"]:   # cache de URLs já buscadas
-    if key not in st.session_state:
-        st.session_state[key] = None
-
-if st.session_state.ctx_urls_conteudo is None:
-    st.session_state.ctx_urls_conteudo = {}
-
-TIPOS_ACEITOS = list(_EXTENSOES_SUPORTADAS.keys())
-TIPOS_LABEL = (
-    "PDF, Word (.docx), HTML, Planilhas (.xlsx/.csv), KML/KMZ, "
-    "Imagens (.jpg/.png/.tiff)"
-)
-
-NAV_AREAS = {
-    "gerador_pareceres": "✏️ Gerador de Pareceres",
-    "repo_pareceres": "📂 Repositório de Pareceres",
-    "gerador_portarias": "✏️ Gerador de Portarias",
-    "repo_portarias": "📂 Repositório de Portarias",
-}
-area_atual = st.radio(
-    "Área do sistema",
-    options=list(NAV_AREAS.keys()),
-    format_func=lambda k: NAV_AREAS[k],
-    horizontal=True,
-    label_visibility="collapsed",
-    key="area_sistema",
-)
-
-if area_atual == "repo_pareceres":
-    render_repositorio_pareceres(llm_config)
-    st.stop()
-if area_atual == "repo_portarias":
-    render_repositorio_portarias(llm_config)
-    st.stop()
-if area_atual == "gerador_portarias":
-    render_gerador_portarias(llm_config)
-    st.stop()
-
-# ---------------------------------------------------------------------------
-# Tabs — Gerador de Pareceres
-# ---------------------------------------------------------------------------
-
 _col_trabalho, _col_assistente = st.columns([1.65, 1.0], gap="large")
 with _col_trabalho:
     tab_rapido, tab1, tab2, tab3, tab4, tab_envio = st.tabs([
@@ -298,15 +5,15 @@ with _col_trabalho:
         "1. Upload do PDF",
         "2. Dados do Município",
         "3. Crivo Normativo",
-        "4. Parecer Final",
+        "4. Portaria Final",
         "📚 Enviar ao repositório",
     ])
 
     # ===== TAB SUBMISSÃO RÁPIDA (Intranet) =====
     with tab_rapido:
-        st.header(RAPIDO_HEADER)
+        st.header(PORTARIA_RAPIDO_HEADER)
 
-        st.info(texto_info_submissao_rapida(TIPOS_LABEL))
+        st.info(texto_info_submissao_portaria(TIPOS_LABEL))
 
         col_up, col_mun = st.columns([1, 1])
 
@@ -436,7 +143,7 @@ with _col_trabalho:
         }
         st.caption(_aviso_tempo.get(llm_config.provider, "Aguarde o processamento completo. Não feche o navegador."))
 
-        if st.button("Analisar e gerar parecer", type="primary", key="rapido_analisar"):
+        if st.button("Analisar e gerar portaria", type="primary", key="rapido_analisar"):
             if not uploads_rapido:
                 st.error("Envie pelo menos um arquivo.")
             elif not municipio_rapido:
@@ -515,7 +222,7 @@ with _col_trabalho:
                 sumario = chamada2_sumario(dados, dados_mun, llm_config)
                 if not sumario:
                     sumario = (
-                        f"**1.1.** O presente Parecer de Mérito apresenta a análise de enquadramento "
+                        f"**1.1.** O presente instrumento apresenta a análise de enquadramento "
                         f"de proposta de {dados.get('objeto', 'investimento')} no Município de {nome}/{uf_rapido}.\n\n"
                         f"**1.2.** Em síntese, o proponente busca captação via **debêntures incentivadas** para "
                         f"{dados.get('objeto', 'a intervenção proposta')}.\n\n"
@@ -556,7 +263,7 @@ with _col_trabalho:
 
                 progress.progress(0.95, text="Gerando documento final...")
                 dados_mun["idhm"] = f"{idh.idhm:.3f}" if idh and idh.idhm else ""
-                parecer = gerar_parecer_md(
+                parecer = gerar_portaria_md(
                     dados=dados,
                     sumario=sumario,
                     analise=analise,
@@ -585,7 +292,7 @@ with _col_trabalho:
                 st.session_state.sumario = sumario
                 st.session_state.analise = analise
                 st.session_state.checklist = checklist
-                st.session_state.parecer_md = parecer
+                st.session_state.portaria_md = parecer
                 st.session_state.municipio_selecionado = municipio_rapido
                 st.session_state.uf_selecionada = uf_rapido
 
@@ -593,7 +300,7 @@ with _col_trabalho:
                 st.success(
                     f"Análise concluída! {len(ok)} arquivo(s) processado(s) "
                     f"({meta['total_chars']:,} caracteres consolidados). "
-                    "Visualize e baixe o parecer abaixo."
+                    "Visualize e baixe a portaria abaixo."
                 )
 
                 # Badges das fontes consultadas
@@ -639,25 +346,25 @@ with _col_trabalho:
                 if meta["tem_kml_kmz"]:
                     st.info("🗺️ Arquivo KML/KMZ incluído — perímetro de intervenção reconhecido.")
 
-        if st.session_state.parecer_md:
-            st.subheader("Parecer Gerado")
-            st.markdown(st.session_state.parecer_md)
+        if st.session_state.portaria_md:
+            st.subheader("Portaria gerada")
+            st.markdown(st.session_state.portaria_md)
             r1, r2 = st.columns(2)
             with r1:
                 st.download_button(
                     label="Download Word (.docx)",
-                    data=md_para_docx_bytes(st.session_state.parecer_md),
-                    file_name=EXPORT_DOCX_NAME,
+                    data=md_para_docx_bytes(st.session_state.portaria_md),
+                    file_name=EXPORT_PORTARIA_DOCX_NAME,
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    key="rapido_download_docx",
+                    key="rapido_download_docx_port",
                 )
             with r2:
                 st.download_button(
                     label="Download Markdown (.md)",
-                    data=st.session_state.parecer_md,
-                    file_name=EXPORT_MD_NAME,
+                    data=st.session_state.portaria_md,
+                    file_name=EXPORT_PORTARIA_MD_NAME,
                     mime="text/markdown",
-                    key="rapido_download_md",
+                    key="rapido_download_md_port",
                 )
 
     # ===== TAB 1: Upload =====
@@ -1141,9 +848,9 @@ with _col_trabalho:
                         )
                         st.session_state.checklist[str(item["id"])] = new_status
 
-    # ===== TAB 4: Parecer Final =====
+    # ===== TAB 4: Portaria Final =====
     with tab4:
-        st.header("Parecer Final — Geração do Documento")
+        st.header("Portaria Final — Geração do Documento")
 
         can_generate = all([
             st.session_state.dados_extraidos,
@@ -1155,9 +862,9 @@ with _col_trabalho:
         ])
 
         if not can_generate:
-            st.warning("Complete as abas 1, 2 e 3 antes de gerar o parecer final.")
+            st.warning("Complete as abas 1, 2 e 3 antes de gerar a portaria final.")
         else:
-            if st.button("Gerar Parecer Final", type="primary"):
+            if st.button("Gerar Portaria Final", type="primary"):
                 ibge_final = st.session_state.dados_ibge
                 capag_final = st.session_state.dados_capag
                 idh_final = st.session_state.dados_idh
@@ -1182,7 +889,7 @@ with _col_trabalho:
                     host_or_config=llm_config,
                 )
 
-                parecer = gerar_parecer_md(
+                parecer = gerar_portaria_md(
                     dados=st.session_state.dados_extraidos,
                     sumario=st.session_state.sumario,
                     analise=st.session_state.analise,
@@ -1197,12 +904,12 @@ with _col_trabalho:
                     dados_planalto=st.session_state.get("dados_planalto"),
                     contexto_objeto=contexto_obj_final,
                 )
-                st.session_state.parecer_md = parecer
-                st.success("Parecer gerado com sucesso!")
+                st.session_state.portaria_md = parecer
+                st.success("Portaria gerada com sucesso!")
 
-            if st.session_state.parecer_md:
-                st.subheader("Preview do Parecer")
-                st.markdown(st.session_state.parecer_md)
+            if st.session_state.portaria_md:
+                st.subheader("Preview da Portaria")
+                st.markdown(st.session_state.portaria_md)
 
                 st.divider()
 
@@ -1210,23 +917,23 @@ with _col_trabalho:
                 with c1:
                     st.download_button(
                         label="Download Word (.docx)",
-                        data=md_para_docx_bytes(st.session_state.parecer_md),
-                        file_name=EXPORT_DOCX_NAME,
+                        data=md_para_docx_bytes(st.session_state.portaria_md),
+                        file_name=EXPORT_PORTARIA_DOCX_NAME,
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     )
                 with c2:
                     st.download_button(
                         label="Download .md",
-                        data=st.session_state.parecer_md,
-                        file_name=EXPORT_MD_NAME,
+                        data=st.session_state.portaria_md,
+                        file_name=EXPORT_PORTARIA_MD_NAME,
                         mime="text/markdown",
                     )
                 with c3:
                     proponente = st.session_state.dados_extraidos.get("proponente", "proposta")
-                    filename = f"parecer_{proponente[:30].replace(' ', '_')}.docx"
+                    filename = f"portaria_{proponente[:30].replace(' ', '_')}.docx"
                     st.download_button(
                         label="Download Word (nome personalizado)",
-                        data=md_para_docx_bytes(st.session_state.parecer_md),
+                        data=md_para_docx_bytes(st.session_state.portaria_md),
                         file_name=filename,
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     )
@@ -1234,22 +941,6 @@ with _col_trabalho:
 
 
     with tab_envio:
-        render_aba_enviar_ao_repositorio(llm_config, TIPOS_ACEITOS, TIPOS_LABEL)
-
-with _col_assistente:
-    def _ctx_doc_ativo():
-        md = st.session_state.get("parecer_md") or ""
-        tx = st.session_state.get("texto_pdf") or ""
-        if md.strip():
-            return (md, "Parecer gerado (Markdown)")
-        if (tx or "").strip():
-            return (tx, "Proposta / texto consolidado")
-        return ("", "Documento vazio")
-
-    render_painel_chat_documento(
-        llm_config,
-        nome_documento="Documento ativo",
-        obter_contexto=_ctx_doc_ativo,
-        key_prefix="gerador_pareceres",
-        categoria_repositorio="parecer",
-    )
+        render_aba_enviar_ao_repositorio(
+            llm_config, TIPOS_ACEITOS, TIPOS_LABEL, category="portaria"
+        )

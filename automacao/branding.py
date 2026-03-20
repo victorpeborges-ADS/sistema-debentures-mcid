@@ -15,6 +15,8 @@ APP_VERSION_CAPTION = "v1.0 — Debêntures Incentivadas / MCID"
 
 EXPORT_DOCX_NAME = "parecer_merito_debentures.docx"
 EXPORT_MD_NAME = "parecer_merito_debentures.md"
+EXPORT_PORTARIA_DOCX_NAME = "portaria_debentures.docx"
+EXPORT_PORTARIA_MD_NAME = "portaria_debentures.md"
 
 # Mensagens de progresso (UI)
 PROGRESS_LEGIS_MCID = "Verificando legislação no portal MCID..."
@@ -25,6 +27,8 @@ SUBHEADER_LEGIS_MCID = "Legislação MCID (portal gov.br)"
 
 # Texto da aba rápida (markdown simples para st.info)
 RAPIDO_HEADER = "Submissão para análise — Debêntures Incentivadas"
+
+PORTARIA_RAPIDO_HEADER = "Submissão para análise — Portarias (Debêntures Incentivadas)"
 
 def texto_info_submissao_rapida(tipos_label: str) -> str:
     """Bloco explicativo da submissão rápida; mantém as mesmas fontes de dados do motor."""
@@ -41,4 +45,12 @@ def texto_info_submissao_rapida(tipos_label: str) -> str:
         "Arquivos KML/KMZ são reconhecidos automaticamente como o perímetro de intervenção, quando aplicável. "
         "Imagens (.jpg/.png/.tiff) são processadas por **OCR** (documentos escaneados) "
         "e/ou **visão por IA** (fotos, mapas, plantas técnicas)."
+    )
+
+
+def texto_info_submissao_portaria(tipos_label: str) -> str:
+    """Texto da submissão rápida no fluxo de portarias (mesmas fontes públicas)."""
+    return (
+        texto_info_submissao_rapida(tipos_label).replace("gera o parecer", "gera a portaria")
+        .replace("o parecer", "a portaria")
     )

@@ -10,6 +10,7 @@ Clientes para as 8 fontes publicas consultadas:
   8. Planalto — Lei nº 10.257/2001 (Estatuto da Cidade)
 """
 
+import io
 import os
 import re
 import json
@@ -21,6 +22,7 @@ from typing import Optional
 
 import requests
 import pandas as pd
+from pypdf import PdfReader
 
 logger = logging.getLogger(__name__)
 
@@ -738,6 +740,31 @@ NORMAS_PLANALTO = {
     },
 }
 
+# Fontes complementares (Debêntures / cidades inteligentes) — mesma estrutura que Planalto
+FONTES_COMPLEMENTO_DEBENTURES = {
+    "dou_portaria_mcid_1012_2025": {
+        "url": "https://www.in.gov.br/en/web/dou/-/portaria-mcid-n-1.012-de-4-de-setembro-de-2025-653269836",
+        "label": "Portaria MCID nº 1.012/2025",
+        "descricao": "Publicação no DOU",
+        "sigla": "DOU-P1012",
+        "formato": "html",
+    },
+    "ppi_nota_tecnica_manual_2025": {
+        "url": "https://ppi.gov.br/wp-content/uploads/2025/06/SEI_6591641_Nota_Tecnica__Manual__001_2025_SEPPI_CC_PR_SNDUM_MCID___1_-1.pdf",
+        "label": "Nota Técnica / Manual — PPI",
+        "descricao": "Documento SEI — SEPPI / MCID",
+        "sigla": "NT-PPI/2025",
+        "formato": "pdf",
+    },
+    "lei_14801_2024": {
+        "url": "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2024/lei/l14801.htm",
+        "label": "Lei nº 14.801/2024",
+        "descricao": "Marco legal — cidades inteligentes",
+        "sigla": "L14801/2024",
+        "formato": "html",
+    },
+}
+
 # Limite de caracteres do texto legal a injetar nos prompts (por norma)
 _PLANALTO_MAX_CHARS = 12_000
 
@@ -897,10 +924,97 @@ def planalto_buscar_norma(chave: str, forcar_atualizacao: bool = False) -> Dados
     return resultado
 
 
+def _fonte_compl_cache_path(chave: str) -> Path:
+    return CACHE_DIR / f"fonte_compl_{chave}.txt"
+
+
+def _texto_de_pdf_bytes(data: bytes) -> tuple[str, str]:
+    try:
+        reader = PdfReader(io.BytesIO(data))
+        parts = []
+        for i, page in enumerate(reader.pages):
+            if i >= 100:
+                break
+            parts.append(page.extract_text() or "")
+        text = "\n".join(parts)
+        if len(text) < 100:
+            return "", "PDF muito curto ou ilegível"
+        return text[:200_000], ""
+    except Exception as e:
+        return "", str(e)
+
+
+def fonte_complementar_buscar(chave: str, forcar_atualizacao: bool = False) -> DadosNormaPlanalto:
+    """DOU, PPI (PDF) e Lei 14.801/2024 — mesma estrutura que normas Planalto."""
+    meta = FONTES_COMPLEMENTO_DEBENTURES.get(chave)
+    if not meta:
+        return DadosNormaPlanalto(chave=chave, erro=f"Chave desconhecida: {chave}")
+
+    resultado = DadosNormaPlanalto(
+        chave=chave,
+        label=meta["label"],
+        descricao=meta["descricao"],
+        sigla=meta["sigla"],
+        url=meta["url"],
+    )
+    cache_path = _fonte_compl_cache_path(chave)
+
+    if cache_path.exists() and not forcar_atualizacao:
+        try:
+            resultado.texto = cache_path.read_text(encoding="utf-8")
+            resultado.acessivel = True
+            resultado.cache_usado = True
+            logger.info("Fonte complemento cache hit: %s", chave)
+            return resultado
+        except Exception as e:
+            logger.warning("Erro ao ler cache %s: %s", chave, e)
+
+    url = meta["url"].split("#")[0].strip()
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/pdf;q=0.9,*/*;q=0.8",
+        "Accept-Language": "pt-BR,pt;q=0.9",
+    }
+    try:
+        r = requests.get(url, headers=headers, timeout=TIMEOUT * 2)
+        r.raise_for_status()
+        fmt = meta.get("formato", "html")
+        if fmt == "pdf":
+            texto, err = _texto_de_pdf_bytes(r.content)
+            if err:
+                resultado.erro = err
+                return resultado
+        else:
+            r.encoding = r.apparent_encoding or "utf-8"
+            texto = _limpar_html_planalto(r.text)
+        if len(texto) < 200:
+            resultado.erro = "Texto extraído muito curto — possível bloqueio ou página vazia."
+            return resultado
+        resultado.texto = texto
+        resultado.acessivel = True
+        try:
+            cache_path.write_text(texto, encoding="utf-8")
+            logger.info("Fonte complemento cache salvo: %s (%d chars)", chave, len(texto))
+        except Exception as e:
+            logger.warning("Não foi possível salvar cache %s: %s", chave, e)
+    except requests.exceptions.Timeout:
+        resultado.erro = f"Timeout ao acessar {url}"
+        logger.warning("Fonte complemento timeout: %s", chave)
+    except Exception as e:
+        resultado.erro = str(e)
+        logger.warning("Fonte complemento erro %s: %s", chave, e)
+
+    return resultado
+
+
 def planalto_buscar_todas(forcar_atualizacao: bool = False) -> DadosPlanalto:
     """
-    Busca as 3 normas do Planalto em paralelo (sequencial com timeout individual).
-    Retorna DadosPlanalto com todas as normas consultadas.
+    Busca as normas do Planalto já mapeadas e as fontes complementares
+    (DOU — portaria MCID; PPI — PDF; Lei 14.801/2024).
     """
     resultado = DadosPlanalto()
     for chave in NORMAS_PLANALTO:
@@ -908,4 +1022,9 @@ def planalto_buscar_todas(forcar_atualizacao: bool = False) -> DadosPlanalto:
         resultado.normas[chave] = norma
         status = "✅ cache" if norma.cache_usado else ("✅ web" if norma.acessivel else f"❌ {norma.erro[:40]}")
         logger.info("Planalto %s: %s", norma.label, status)
+    for chave in FONTES_COMPLEMENTO_DEBENTURES:
+        norma = fonte_complementar_buscar(chave, forcar_atualizacao=forcar_atualizacao)
+        resultado.normas[chave] = norma
+        status = "✅ cache" if norma.cache_usado else ("✅ web" if norma.acessivel else f"❌ {norma.erro[:40]}")
+        logger.info("Fonte complemento %s: %s", norma.label, status)
     return resultado

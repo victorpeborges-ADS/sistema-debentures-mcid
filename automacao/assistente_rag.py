@@ -1,0 +1,167 @@
+"""
+Assistente de documento com RAG lógico restrito: a LLM só vê o contexto fornecido
+(documento em sessão +, opcionalmente, repositório da mesma categoria).
+Instruções de citação obrigatória no system prompt.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Callable, Literal, Optional, Tuple
+
+import streamlit as st
+
+from llm_client import LLMConfig, gerar_texto
+
+logger = logging.getLogger(__name__)
+
+CategoryRepo = Literal["parecer", "portaria"]
+
+SYSTEM_PROMPT_RAG_RESTRITO = """Você é um assistente especializado em análise de documentos administrativos.
+
+REGRAS ABSOLUTAS:
+1) Você só pode usar informações que apareçam explicitamente no CONTEXTO fornecido abaixo (documento ativo e, se existir, bloco REPOSITÓRIO).
+2) Se a informação não estiver no contexto, responda exatamente: "Não consta no documento fornecido."
+3) É PROIBIDO inventar dados, números, artigos, páginas ou trechos que não estejam no contexto.
+4) Não misture categorias: se o bloco REPOSITÓRIO estiver presente, trate-o apenas como material de referência do mesmo tipo de fluxo (parecer ou portaria); não invente conteúdo de outro repositório.
+5) Toda resposta que extrair um dado do contexto DEVE incluir a justificativa no formato de citação direta abaixo.
+
+FORMATO OBRIGATÓRIO DE CITAÇÃO (use sempre que houver extração de conteúdo):
+"No documento [NOME_DO_DOCUMENTO], [LOCALIZAÇÃO: use "página X" somente se o número de página aparecer no contexto; caso contrário indique que não há numeração de página no texto extraído], neste trecho: '{TRECHO_EXATO_COPIADO_DO_CONTEXTO}'"
+
+- O trecho entre aspas simples deve ser cópia literal do CONTEXTO (pode ser curto, mas deve ser fiel).
+- Se não houver indicação de página no texto, diga explicitamente que o trecho não traz número de página.
+
+Seja conciso. Responda em português."""
+
+
+def montar_contexto_para_llm(
+    nome_documento: str,
+    texto_documento: str,
+    texto_repositorio: str = "",
+) -> str:
+    base = (
+        f"NOME_DO_DOCUMENTO: {nome_documento}\n\n"
+        f"CONTEXTO_DO_DOCUMENTO (fonte principal):\n"
+        f"{texto_documento}"
+    )
+    tr = (texto_repositorio or "").strip()
+    if tr:
+        base += (
+            "\n\n---\nREPOSITÓRIO DE REFERÊNCIA (mesma categoria do fluxo; "
+            "use apenas para cruzar estilo ou trechos explícitos):\n"
+            f"{tr}"
+        )
+    return base
+
+
+def responder_chat_rag(
+    pergunta: str,
+    nome_documento: str,
+    texto_documento: str,
+    config: LLMConfig,
+    *,
+    categoria_repositorio: Optional[CategoryRepo] = None,
+) -> Optional[str]:
+    repo_txt = ""
+    if categoria_repositorio:
+        from repository_store import texto_repositorio_concatenado
+
+        repo_txt = texto_repositorio_concatenado(categoria_repositorio)
+    doc = (texto_documento or "").strip()
+    if not doc and not (repo_txt or "").strip():
+        return None
+    if not doc and repo_txt:
+        doc = "[Documento ativo vazio — responda apenas com base no REPOSITÓRIO abaixo.]"
+    ctx = montar_contexto_para_llm(nome_documento, doc, repo_txt)
+    prompt_user = f"{ctx}\n\n---\nPERGUNTA DO USUÁRIO:\n{pergunta}"
+    return gerar_texto(prompt_user, SYSTEM_PROMPT_RAG_RESTRITO, config)
+
+
+def render_painel_chat_documento(
+    llm_config: LLMConfig,
+    nome_documento: str,
+    obter_contexto: Callable[[], Tuple[str, str]],
+    *,
+    key_prefix: str,
+    categoria_repositorio: Optional[CategoryRepo] = None,
+) -> None:
+    """
+    Painel lateral de chat. `obter_contexto()` retorna (texto_para_rag, etiqueta_opcional).
+    Se `categoria_repositorio` for definido, o texto do repositório correspondente é
+    concatenado ao contexto (RAG restrito ao documento + esse repositório).
+    """
+    st.markdown("##### Assistente ao documento")
+    cap = (
+        "RAG restrito: respostas com base no documento em contexto"
+        + (
+            " e no **Repositório de Pareceres**."
+            if categoria_repositorio == "parecer"
+            else (
+                " e no **Repositório de Portarias**."
+                if categoria_repositorio == "portaria"
+                else "."
+            )
+        )
+        + " Citações obrigatórias quando houver extração."
+    )
+    st.caption(cap)
+
+    msg_key = f"{key_prefix}_chat_messages"
+    if msg_key not in st.session_state:
+        st.session_state[msg_key] = []
+
+    texto_ctx, _ = obter_contexto()
+    from repository_store import texto_repositorio_concatenado as _repo_concat
+
+    _repo_ok = bool(
+        categoria_repositorio and _repo_concat(categoria_repositorio).strip()
+    )
+    if not (texto_ctx or "").strip() and not _repo_ok:
+        st.info(
+            "Carregue ficheiros, gere o documento ou adicione ficheiros ao repositório "
+            "para ativar o contexto do assistente."
+        )
+
+    for m in st.session_state[msg_key]:
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"])
+
+    c1, c2 = st.columns([3, 1])
+    with c2:
+        if st.button("Limpar conversa", key=f"{key_prefix}_clear_chat"):
+            st.session_state[msg_key] = []
+            st.rerun()
+
+    prompt = st.chat_input(
+        "Pergunta sobre o documento…",
+        key=f"{key_prefix}_chat_input",
+    )
+
+    if prompt:
+        texto_doc, nome_doc2 = obter_contexto()
+        nome_ef = (nome_doc2 or "").strip() or nome_documento
+        has_repo = bool(
+            categoria_repositorio and _repo_concat(categoria_repositorio).strip()
+        )
+        if not (texto_doc or "").strip() and not has_repo:
+            st.warning("Sem texto de documento nem repositório no contexto.")
+            return
+        with st.spinner("Consultando o documento…"):
+            resp = responder_chat_rag(
+                prompt,
+                nome_ef,
+                texto_doc,
+                llm_config,
+                categoria_repositorio=categoria_repositorio,
+            )
+        if resp:
+            st.session_state[msg_key].append({"role": "user", "content": prompt})
+            st.session_state[msg_key].append(
+                {"role": "assistant", "content": resp}
+            )
+            st.rerun()
+        else:
+            st.error(
+                "Não foi possível obter resposta. Verifique a ligação ao modelo."
+            )
