@@ -2,6 +2,13 @@
 
 Cópia independente do automatizador de **Parecer de Mérito**, configurada para o contexto **Debêntures Incentivadas**. A lógica de APIs (IBGE, CAPAG, Atlas, SEBRAE, Planalto, portal MCID) e o fluxo de IA são os mesmos do projeto original.
 
+**Repositório GitHub:** [github.com/victorpeborges-ADS/sistema-debentures-mcid](https://github.com/victorpeborges-ADS/sistema-debentures-mcid)
+
+```bash
+git clone https://github.com/victorpeborges-ADS/sistema-debentures-mcid.git
+cd sistema-debentures-mcid/automacao
+```
+
 ## Diferença em relação ao Pro-Cidades
 
 - Interface, títulos, nomes de ficheiros exportados e porta do Streamlit (**8502**) são específicos deste sistema.
