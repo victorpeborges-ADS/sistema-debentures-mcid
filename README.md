@@ -1,6 +1,13 @@
 # Sistema Debêntures (MCID)
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://streamlit.io)
+[![CI](https://github.com/victorpeborges-ADS/sistema-debentures-mcid/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/victorpeborges-ADS/sistema-debentures-mcid/actions/workflows/ci.yml)
+
 Cópia independente do automatizador de **Parecer de Mérito**, configurada para o contexto **Debêntures Incentivadas**. A lógica de APIs (IBGE, CAPAG, Atlas, SEBRAE, Planalto, portal MCID) e o fluxo de IA são os mesmos do projeto original.
+
+> **Aviso:** ferramenta de apoio à análise. O conteúdo gerado deve ser **revisto** por analista competente; não substitui parecer jurídico ou decisão administrativa oficial.
 
 **Repositório GitHub:** [github.com/victorpeborges-ADS/sistema-debentures-mcid](https://github.com/victorpeborges-ADS/sistema-debentures-mcid)
 
@@ -44,3 +51,8 @@ Requisitos típicos: Python 3.11+, ambiente virtual criado pelo script, dependê
 
 - `automacao/COMO_INSTALAR_WINDOWS.md` — instalação detalhada em Windows
 - `automacao/README_INTRANET.md` — implantação em intranet / Docker
+- `SECURITY.md` — reporte de vulnerabilidades e boas práticas
+
+## Licença
+
+Este projeto está licenciado sob a [Licença MIT](LICENSE).

@@ -1,0 +1,8 @@
+# Atualizações de dependências Python (alertas de segurança e versões)
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/automacao"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
