@@ -812,72 +812,7 @@ def chamada3_analise(dados: dict, conformidade: str, capag_info: dict,
 
 
 # ---------------------------------------------------------------------------
-# Chamada 4: Checklist (secao 7)
-# ---------------------------------------------------------------------------
-
-SYSTEM_CHECKLIST = """Você é um analista documental do Ministério das Cidades.
-Analise o texto do PDF e determine o status de cada item do checklist de **documentação da operação (debêntures incentivadas / infraestrutura urbana)**.
-Retorne APENAS JSON válido, sem explicações."""
-
-CHECKLIST_ITEMS = [
-    {"id": 1, "doc": "Definição do perímetro da área de intervenção (.kml/.kmz ou imagem satélite/foto aérea)"},
-    {"id": 2, "doc": "Declaração de disponibilidade orçamentária/financeira para a contrapartida"},
-    {"id": 3, "doc": "Declaração de capacidade técnica e gerencial (profissional responsável indicado)"},
-    {"id": 4, "doc": "Declaração de atendimento à legislação urbanística (Plano Diretor)"},
-    {"id": 5, "doc": "Declaração de acessibilidade"},
-    {"id": 6, "doc": "Comprovação de titularidade da área"},
-    {"id": 7, "doc": "Anuência do Município / Contrato de concessão ou PPP (setor privado)"},
-    {"id": 8, "doc": "Outros (especificar se solicitados)"},
-]
-
-PROMPT_CHECKLIST = """Analise o texto do PDF abaixo e determine, para cada item do checklist abaixo (documentação típica de operação de debêntures incentivadas em contexto urbano), se o documento correspondente está presente ou mencionado.
-
-ITENS DO CHECKLIST:
-{itens}
-
-REGRAS para determinação do status:
-- "Cumprida" = documento está presente, mencionado como entregue, ou há declaração assinada no texto
-- "Atendido parcialmente" = documento mencionado mas incompleto (ex: foto em vez de .kml para o perímetro)
-- "Não disponível" = documento não encontrado no texto e seria aplicável
-- "Não cabível" = item não se aplica ao tipo de proposta (ex: Plano Diretor para setor privado/SPE; titularidade para vias públicas)
-
-DICAS DE INTERPRETAÇÃO:
-- Item 1 (perímetro): "Cumprida" apenas se .kml/.kmz ou imagem satélite delimitada; foto genérica = "Atendido parcialmente"; seção XI vazia = "Não disponível"
-- Item 4 (Plano Diretor): para SPE/concessionária privada = "Não cabível"
-- Item 5 (acessibilidade): para projetos exclusivamente de iluminação/rede elétrica sem componente de acesso físico = "Não cabível"
-- Item 6 (titularidade): para vias públicas concedidas = "Não cabível"
-- Item 7 (anuência/PPP): "Cumprida" se há contrato de concessão ou PPP mencionado
-
-TEXTO DO PDF:
-{texto}
-
-Retorne JSON no formato: {{"1": "Cumprida", "2": "Não disponível", "3": "Cumprida", "4": "Não cabível", "5": "Não cabível", "6": "Não cabível", "7": "Cumprida", "8": "-"}}"""
-
-
-def chamada4_checklist(texto_pdf: str, host_or_config, model: str = "",
-                        tem_kml_kmz: bool = False) -> dict:
-    cfg = _config_from_args(host_or_config, model)
-    itens_str = "\n".join(f"  {i['id']}. {i['doc']}" for i in CHECKLIST_ITEMS)
-    prompt = PROMPT_CHECKLIST.format(
-        itens=itens_str,
-        texto=texto_pdf[:6000],
-    )
-    resposta = _gerar(prompt, SYSTEM_CHECKLIST, cfg, as_json=True)
-    resultado = {}
-    if resposta:
-        try:
-            resultado = json.loads(resposta)
-        except json.JSONDecodeError:
-            resultado = {}
-
-    if tem_kml_kmz:
-        resultado["1"] = "Cumprida"
-
-    return resultado
-
-
-# ---------------------------------------------------------------------------
-# Chamada 5 — Contexto do objeto no município (parágrafo específico seção 4)
+# Chamada 4 — Contexto do objeto no município (parágrafo específico seção 4)
 # ---------------------------------------------------------------------------
 
 _SYSTEM_CONTEXTO_OBJETO_BASE = (
@@ -998,7 +933,7 @@ def avaliar_conformidade(dados: dict) -> list[dict]:
     resultados.append({
         "regra": "Âmbito urbano da intervenção (compatível com objeto de infraestrutura)",
         "conforme": None,
-        "detalhe": "Verificar perímetro da área de intervenção no Checklist (item 1)",
+        "detalhe": "Verificar delimitação da área de intervenção na documentação da proposta",
     })
 
     return resultados
@@ -1026,6 +961,19 @@ def conformidade_texto(resultados: list[dict], capag_result: dict) -> str:
         "NÃO CONFORME" if capag_result["conforme"] is False else "VERIFICAR")
     linhas.append(f"- CAPAG compatível (Tesouro Nacional): {status_capag} — {capag_result['detalhe']}")
     return "\n".join(linhas)
+
+
+def pendencias_normativas(
+    conformidade_results: list[dict], capag_result: dict
+) -> list[str]:
+    """Regras objetivas não atendidas (conforme=False) e CAPAG restritivo."""
+    out: list[str] = []
+    for r in conformidade_results:
+        if r.get("conforme") is False:
+            out.append(f"{r['regra']} — {r.get('detalhe', '')}")
+    if capag_result.get("conforme") is False:
+        out.append(f"CAPAG (Tesouro Nacional) — {capag_result.get('detalhe', '')}")
+    return out
 
 
 def _parse_valor(texto: str) -> float:
@@ -1445,7 +1393,6 @@ def gerar_parecer_md(
     dados: dict,
     sumario: str,
     analise: str,
-    checklist: dict,
     conformidade_results: list[dict],
     capag_result: dict,
     dados_municipio: dict,
@@ -1542,57 +1489,37 @@ Coordenação-Geral de Modernização Urbana
     # ---- Seção 6: Análise de Enquadramento ----
     sec6 = f"## 6. {SEC_ANALISE}\n\n{analise}"
 
-    # ---- Seção 7: Atendimento Normativo (Checklist) ----
-    checklist_rows = ""
-    for item in CHECKLIST_ITEMS:
-        status = checklist.get(str(item["id"]), "—")
-        checklist_rows += f"| {item['id']} | {item['doc']} | **{status}** |\n"
+    # ---- Seção 7: Atendimento à documentação (sem checklist Pró-Cidades / Quadro 3) ----
+    pendencias = pendencias_normativas(conformidade_results, capag_result)
 
-    # Gerar análise por item com pendências
-    pendencias = [
-        CHECKLIST_ITEMS[i] for i in range(len(CHECKLIST_ITEMS))
-        if checklist.get(str(CHECKLIST_ITEMS[i]["id"])) in ("Não disponível", "Atendido parcialmente")
+    sec7_linhas = [
+        f"## 7. {SEC_CHECKLIST}",
+        "",
+        f"**7.1.** No regime de **debêntures incentivadas** (Lei nº 12.431/2011), a documentação da "
+        "emissão e os requisitos do projeto prioritário são analisados em consonância com a **seção 6** "
+        "deste Parecer e com os **critérios formais** sintetizados na avaliação de conformidade normativa já exposta.",
+        "",
+        "**7.2.** A verificação no **modelo Programa Pró-Cidades** (checklist do Anexo II da IN MCID nº 18/2025) "
+        "**não se aplica** ao presente pedido de enquadramento com captação por debêntures incentivadas; "
+        "não há, portanto, **Quadro 3** nesse formato. As exigências documentais específicas da operação "
+        "devem observar as normas da CVM, a Portaria MCID nº 359/2025 e diplomas correlatos, conforme o objeto.",
     ]
-
-    analise_checklist = (
-        "\n\n**7.2.** Para operações de **debêntures incentivadas** com objeto de infraestrutura urbana, "
-        "a comprovação da delimitação da intervenção e da documentação de suporte assume importância "
-        "central; avalia-se o cumprimento do especificado no item 1 do Quadro 3 e demais itens "
-        "aplicáveis.\n"
-    )
     if pendencias:
-        itens_pend = ", ".join(f"item {p['id']}" for p in pendencias)
-        analise_checklist += (
-            f"\n**7.3.** Da análise documental realizada, verificou-se que os seguintes itens do "
-            f"Quadro 3 apresentam pendências ou atendimento parcial: **{itens_pend}**. "
-            f"Recomenda-se que o Proponente adote as providências necessárias para o saneamento "
-            f"das exigências antes do deferimento final.\n"
-            f"\n**7.4.** Por tudo, entende-se que a Proponente cumpriu os requisitos de mérito "
-            f"examinados no presente Parecer para fazer jus ao prosseguimento da operação de debêntures incentivadas, "
-            f"restando, contudo, a necessidade de adotar as providências mencionadas nos itens "
-            f"pendentes deste Quadro 3."
-        )
+        sec7_linhas.extend([
+            "",
+            "**7.3.** Identificam-se os seguintes pontos formais a regularizar ou acompanhar:",
+            "",
+            *[f"- {p}" for p in pendencias],
+            "",
+            "**7.4.** Recomenda-se diligência quanto aos itens acima antes do encerramento da análise.",
+        ])
     else:
-        analise_checklist += (
-            "\n**7.3.** Da análise documental realizada, todos os itens aplicáveis do Quadro 3 "
-            "encontram-se cumpridos ou devidamente justificados como não cabíveis, evidenciando "
-            "que a Proponente atendeu integralmente às exigências documentais aplicáveis à operação.\n"
-            "\n**7.4.** Por tudo, entende-se que a Proponente cumpriu integralmente os requisitos "
-            "de mérito examinados no presente Parecer para fazer jus ao prosseguimento da operação de debêntures incentivadas."
-        )
-
-    sec7 = f"""\
-## 7. {SEC_CHECKLIST}
-
-**7.1.** Com relação aos requisitos documentais a serem cumpridos pela Proponente, ao analisar a documentação constante da Proposta Técnica nº {num_proposta}, identificou-se a situação descrita no Quadro 3 (checklist da operação de debêntures incentivadas).
-
-*Observação: A definição do perímetro da área de intervenção deve ser devidamente identificada e caracterizada, sendo obrigatória a sua delimitação em arquivo com extensão .kml ou .kmz, ou, alternativamente, sobre imagem de satélite ou fotografia aérea de alta resolução.*
-
-**Quadro 3** – Documentação analisada para enquadramento da Proposta de {proponente}
-
-| Item | Documento | Situação |
-|------|-----------|----------|
-{checklist_rows}{analise_checklist}"""
+        sec7_linhas.extend([
+            "",
+            "**7.3.** Da confrontação com os critérios objetivos aplicados neste fluxo de debêntures, "
+            "**não se identificam** pendências formais adicionais aqui listadas, além do já examinado na análise de mérito.",
+        ])
+    sec7 = "\n".join(sec7_linhas)
 
     # ---- Seção 8: Conclusão ----
     normas_alinhamento = (
@@ -1601,12 +1528,12 @@ Coordenação-Geral de Modernização Urbana
     )
 
     if pendencias:
-        _itens_pend_str = "; ".join(f"({p['id']}) {p['doc']}" for p in pendencias)
+        _itens_pend_str = "; ".join(pendencias)
         conclusao_txt = (
-            f"**PENDÊNCIAS DOCUMENTAIS.** A proposta reúne os elementos técnicos suficientes "
+            f"**PENDÊNCIAS.** A proposta reúne os elementos técnicos suficientes "
             f"para análise de mérito no âmbito de **debêntures incentivadas** (Lei nº 12.431/2011). "
-            f"Contudo, recomenda-se **diligência** para apresentação "
-            f"dos seguintes itens: {_itens_pend_str}. "
+            f"Contudo, recomenda-se **diligência** para apresentação ou regularização "
+            f"dos seguintes pontos: {_itens_pend_str}. "
             f"Após o atendimento dessas exigências, a viabilidade técnica poderá ser deferida."
         )
     else:
@@ -1652,7 +1579,7 @@ Coordenação-Geral de Modernização Urbana
 
 **8.2.** O material apresentado informa que o projeto promove {_beneficios_str}.
 
-**8.3.** Destarte, identifica-se que a proposta reúne os elementos técnicos {"suficientes" if pendencias else "integrais"} para sua {"aprovação condicionada ao saneamento das pendências documentais apontadas" if pendencias else "aprovação"}, uma vez que a intervenção proposta é fundamental para garantir maior eficiência energética, segurança pública e qualidade de vida para a população de {municipio}. {"Não obstante, cabe assinalar a necessidade de observar o elencado nos itens 7.3 e 7.4 deste Parecer." if pendencias else ""}
+**8.3.** Destarte, identifica-se que a proposta reúne os elementos técnicos {"suficientes" if pendencias else "integrais"} para sua {"aprovação condicionada ao saneamento das pendências apontadas na seção 7" if pendencias else "aprovação"}, uma vez que a intervenção proposta é fundamental para garantir maior eficiência energética, segurança pública e qualidade de vida para a população de {municipio}. {"Não obstante, cabe assinalar a necessidade de observar o elencado na seção 7 deste Parecer." if pendencias else ""}
 
 **8.4.** Situação CAPAG do Município: {capag_status}.
 

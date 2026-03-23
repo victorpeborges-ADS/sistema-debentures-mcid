@@ -75,7 +75,7 @@ with _col_trabalho:
                 for f in uploads_rapido
             )
             if tem_kml:
-                st.success("🗺️ KML/KMZ detectado — item 1 do checklist (perímetro) será marcado como **Cumprida** automaticamente.")
+                st.success("🗺️ KML/KMZ detectado — delimitação geográfica disponível para análise documental.")
             if tem_img:
                 _metodo_img = (
                     "visão por IA + OCR" if suporta_visao(llm_config) else "OCR"
@@ -241,18 +241,7 @@ with _col_trabalho:
                 analise = chamada3_analise(dados, conf_txt, capag_info, llm_config,
                                            dados_planalto=planalto)
 
-                progress.progress(0.90, text="Avaliando Checklist...")
-                checklist = chamada4_checklist(
-                    texto_consolidado, llm_config,
-                    tem_kml_kmz=tem_kml,
-                )
-                for item in CHECKLIST_ITEMS:
-                    if str(item["id"]) not in checklist:
-                        checklist[str(item["id"])] = "Não disponível"
-                if tem_kml:
-                    checklist["1"] = "Cumprida"
-
-                progress.progress(0.93, text=f"Contextualizando objeto no município ({_ia_label})...")
+                progress.progress(0.90, text=f"Contextualizando objeto no município ({_ia_label})...")
                 contexto_obj = chamada5_contexto_objeto(
                     texto_pdf=texto_consolidado,
                     objeto=dados.get("objeto", ""),
@@ -267,7 +256,6 @@ with _col_trabalho:
                     dados=dados,
                     sumario=sumario,
                     analise=analise,
-                    checklist=checklist,
                     conformidade_results=conf,
                     capag_result=capag_r,
                     dados_municipio=dados_mun,
@@ -291,7 +279,6 @@ with _col_trabalho:
                 st.session_state.capag_result = capag_r
                 st.session_state.sumario = sumario
                 st.session_state.analise = analise
-                st.session_state.checklist = checklist
                 st.session_state.portaria_md = parecer
                 st.session_state.municipio_selecionado = municipio_rapido
                 st.session_state.uf_selecionada = uf_rapido
@@ -398,7 +385,7 @@ with _col_trabalho:
                             f"{meta['total_chars']:,} caracteres totais."
                         )
                         if meta["tem_kml_kmz"]:
-                            st.info("🗺️ KML/KMZ detectado — perímetro será marcado como Cumprida no checklist.")
+                            st.info("🗺️ KML/KMZ detectado — delimitação geográfica disponível para análise.")
                     else:
                         st.error("Nenhum texto extraído. Verifique os arquivos enviados.")
 
@@ -770,7 +757,7 @@ with _col_trabalho:
                     st.warning(f"CAPAG: {capag_r['detalhe']}")
 
             st.divider()
-            st.subheader(f"Geração via {_llm_tab3} (Sumário + Análise + Checklist)")
+            st.subheader(f"Geração via {_llm_tab3} (Sumário + Análise)")
 
             if st.button(f"Gerar seções via {_llm_tab3}", type="primary"):
                 if st.session_state.conformidade is None:
@@ -808,12 +795,6 @@ with _col_trabalho:
                     )
                     st.session_state.analise = analise
 
-                    prog.progress(66, text=f"Avaliando Checklist ({_ia_label})...")
-                    checklist = chamada4_checklist(
-                        st.session_state.texto_pdf, llm_config
-                    )
-                    st.session_state.checklist = checklist
-
                     prog.progress(100, text="Concluído!")
                     st.success("Seções geradas com sucesso!")
 
@@ -835,19 +816,6 @@ with _col_trabalho:
                         key="edit_analise",
                     )
 
-            if st.session_state.checklist:
-                with st.expander("Preview: Checklist", expanded=True):
-                    for item in CHECKLIST_ITEMS:
-                        status = st.session_state.checklist.get(str(item["id"]), "-")
-                        new_status = st.selectbox(
-                            f"Item {item['id']}: {item['doc']}",
-                            ["Cumprida", "Não disponível", "Não cabível"],
-                            index=["Cumprida", "Não disponível", "Não cabível"].index(status)
-                            if status in ["Cumprida", "Não disponível", "Não cabível"] else 1,
-                            key=f"check_{item['id']}",
-                        )
-                        st.session_state.checklist[str(item["id"])] = new_status
-
     # ===== TAB 4: Portaria Final =====
     with tab4:
         st.header("Portaria Final — Geração do Documento")
@@ -856,7 +824,6 @@ with _col_trabalho:
             st.session_state.dados_extraidos,
             st.session_state.sumario,
             st.session_state.analise,
-            st.session_state.checklist,
             st.session_state.conformidade,
             st.session_state.capag_result,
         ])
@@ -893,7 +860,6 @@ with _col_trabalho:
                     dados=st.session_state.dados_extraidos,
                     sumario=st.session_state.sumario,
                     analise=st.session_state.analise,
-                    checklist=st.session_state.checklist,
                     conformidade_results=st.session_state.conformidade,
                     capag_result=st.session_state.capag_result,
                     dados_municipio=dados_mun,

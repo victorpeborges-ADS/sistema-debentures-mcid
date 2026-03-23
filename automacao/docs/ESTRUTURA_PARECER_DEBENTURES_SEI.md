@@ -60,7 +60,7 @@ O gerador automático organiza o Markdown em **8 blocos** compatíveis com o flu
 | 4. Dados do município / território | IBGE, CAPAG, IDH, contexto do objeto. |
 | 5. Projeto e documentação | Descrição e valores da operação. |
 | 6. Análise de enquadramento | Incorpora papel dos arts. **Dec. 11.964** e **Portaria 359** + **Lei 12.431** (conteúdo gerado por IA). |
-| 7. Documentação (checklist) | Verificação análoga aos requisitos da Portaria (cartas, contratos, perímetro, etc.). |
+| 7. Atendimento à documentação da operação | Texto sintético: critérios debêntures/CVM/Portaria 359; **sem** checklist Pró-Cidades (IN 18/2025) nem Quadro 3 nesse formato. Pendências formais derivam do crivo normativo + CAPAG. |
 | 8. Conclusão | Viabilidade / pendências + CAPAG. |
 
 Para **paridade total** com um parecer SEI (incluindo blocos longos de citação dos arts. 5º–10º da Portaria 359), seria necessário **template normativo** adicional ou **RAG** com PDF da Portaria — evolução futura.
