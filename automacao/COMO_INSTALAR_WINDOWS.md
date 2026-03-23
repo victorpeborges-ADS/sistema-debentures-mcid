@@ -134,6 +134,8 @@ Sempre que o responsável publicar melhorias, você atualiza em segundos — sem
 
 > O script atualiza apenas os arquivos do sistema. **Nunca sobrescreve o `secrets.toml`.**
 
+> **Atualização a partir de março/2026:** o `atualizar_windows.bat` tenta automaticamente guardar em *stash* ficheiros locais não rastreados que bloqueiem o merge. Se ainda falhar, use a solução manual abaixo.
+
 ### Fluxo de trabalho da equipe
 
 ```
@@ -183,6 +185,20 @@ Procure o ícone do Ollama na bandeja do sistema (canto inferior direito) e cliq
 ### Análise trava ou demora muito
 - Com Ollama: normal em CPU — pode levar 15 minutos. Não feche o navegador.
 - Mude para Groq (gratuito) na barra lateral do sistema para análises mais rápidas.
+
+### Erro: *"untracked working tree files would be overwritten by merge"*
+Significa que existem **ficheiros na pasta que o Git não controla** (cópias antigas ou ficheiros criados à mão) com o **mesmo nome** que o GitHub vai trazer na atualização. O Git aborta para não apagar o conteúdo local sem aviso.
+
+**Opção A — na linha de comando** (na **raiz** da pasta do projeto, onde está a pasta `automacao`):
+
+```bat
+git stash push -u -m "backup-antes-atualizar"
+git merge --ff-only origin/main
+```
+
+Depois, se não precisar do que ficou no *stash*: `git stash drop`.
+
+**Opção B — apagar ou renomear só os ficheiros citados no erro** (ex.: `.cursorignore`, `automacao\repositorio_portarias.py`) e voltar a executar `atualizar_windows.bat`. Se forem só duplicados do repositório, pode apagar com segurança e deixar o Git trazer a versão oficial.
 
 ---
 

@@ -116,15 +116,49 @@ if errorlevel 1 (
 
   echo.
 
-  echo [ERRO] Merge fast-forward falhou. Possiveis alteracoes locais ou conflitos.
+  echo  Primeira tentativa falhou — frequentemente sao ficheiros locais NAO rastreados
 
-  echo  Veja: git status
+  echo  com o mesmo nome que o GitHub vai trazer. A guardar em stash e a tentar de novo...
 
-  popd
+  echo.
 
-  pause
+  git stash push -u -m "debentures-pre-update" 2>nul
 
-  exit /b 1
+  git merge --ff-only origin/main
+
+  if errorlevel 1 (
+
+    echo.
+
+    echo [ERRO] Merge fast-forward falhou. Possiveis alteracoes locais ou conflitos.
+
+    echo  Veja: git status
+
+    echo.
+
+    echo  Solucao manual ^(na pasta raiz do projeto, no Git Bash ou CMD^):
+
+    echo    1^) Apagar ou renomear os ficheiros que o Git diz que bloqueiam, OU
+
+    echo    2^) git stash push -u -m backup
+
+    echo       git merge --ff-only origin/main
+
+    echo.
+
+    pause
+
+    exit /b 1
+
+  )
+
+  echo.
+
+  echo [INFO] Copias antigas podem estar em stash — ver: git stash list
+
+  echo       Se nao precisar da copia: git stash drop
+
+  echo.
 
 )
 
