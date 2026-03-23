@@ -1,0 +1,30 @@
+---
+description: Após corrigir ou acrescentar funcionalidade, fazer commit e push no GitHub automaticamente
+alwaysApply: true
+---
+
+# Git — commit e push após alterações (Sistema Debêntures)
+
+Sempre que **concluíres** uma correção de bug, nova funcionalidade, refactor relevante ou documentação associada a mudanças de comportamento no **Sistema Debêntures** (`Sistema_Debentures/`):
+
+1. **Executa** (na raiz do repositório Git do projeto, normalmente `Sistema_Debentures/`):
+   - `git status`
+   - `git add` dos ficheiros relevantes (não adicionar ficheiros ignorados ou segredos)
+   - `git commit -m "..."` com mensagem clara em português (tipo convencional: `feat:`, `fix:`, `docs:`, `refactor:`)
+   - `git push origin` + branch atual (ex.: `main`)
+
+2. **Não** fazer commit de:
+   - `.env`, `.streamlit/secrets.toml`, chaves, credenciais
+   - artefactos temporários ou dumps grandes
+
+3. Se **não houver** alterações para commitar, não cries commit vazio.
+
+4. Se o **push falhar** (rede, auth, conflito), explica o erro e o que o utilizador pode fazer; não uses `git push --force` sem pedido explícito do utilizador.
+
+5. **Objetivo:** o repositório remoto (GitHub) deve refletir o trabalho concluído na mesma sessão, sem o utilizador ter de pedir separadamente "subir para o git".
+
+---
+
+## Nota
+
+Isto depende do agente **seguir a regra** ao finalizar tarefas. Automação verdadeiramente "sem intervenção" exigiria *git hooks* ou CI no repositório; esta regra cobre o fluxo no Cursor.
