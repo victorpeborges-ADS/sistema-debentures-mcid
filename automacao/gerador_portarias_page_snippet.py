@@ -227,7 +227,7 @@ with _col_trabalho:
                         f"**1.2.** Em síntese, o proponente busca captação via **debêntures incentivadas** para "
                         f"{dados.get('objeto', 'a intervenção proposta')}.\n\n"
                         f"**1.3.** Nesse sentido, solicita o enquadramento no arcabouço de **debêntures incentivadas**, "
-                        f"nos termos da legislação aplicável (ex.: Lei nº 12.431/2012 e normativos correlatos)."
+                        f"nos termos da legislação aplicável (ex.: Lei nº 12.431/2011 e normativos correlatos)."
                     )
 
                 progress.progress(0.82, text=f"Gerando Análise Normativa ({_ia_label})...")

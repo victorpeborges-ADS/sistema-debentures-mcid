@@ -24,6 +24,7 @@ O sistema separa **leitura** (repositórios com filtros e pré-visualização) d
 
 - Interface, títulos, nomes de ficheiros exportados e porta do Streamlit (**8502**) são específicos deste sistema.
 - O **Pro-Cidades** continua a usar a pasta e a porta próprias (por exemplo **8501**), podendo os dois correr em paralelo na mesma máquina.
+- Os **pareceres e notas técnicas gerados aqui** fundamentam-se em **debêntures incentivadas (Lei nº 12.431/2011)** e normas correlatas — **não** reproduzem o enquadramento do Programa Pró-Cidades / IN MCID 18/2025 como base do relatório.
 - Tema **escuro** por defeito (produtividade / leitura prolongada), configurável em `automacao/.streamlit/config.toml`.
 
 ## Como executar (terminal)
@@ -84,6 +85,7 @@ Requisitos típicos: Python 3.11+, ambiente virtual criado pelo script, dependê
 
 - `automacao/COMO_INSTALAR_WINDOWS.md` — instalação detalhada em Windows
 - `automacao/README_INTRANET.md` — implantação em intranet / Docker
+- `automacao/CONFIGURAR_AZURE_OPENAI.md` — onde obter endpoint, chave e deployment no Portal Azure
 - `SECURITY.md` — reporte de vulnerabilidades e boas práticas
 
 ## Licença

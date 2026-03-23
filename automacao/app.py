@@ -175,15 +175,38 @@ with st.sidebar:
         )
 
     elif provider == "azure_openai":
-        st.info("Recomendado para uso em órgãos federais. Entre em contato com a TI do Ministério para obter as credenciais Azure.")
+        _az_end = os.environ.get("AZURE_OPENAI_ENDPOINT", "")
+        _az_key = os.environ.get("AZURE_OPENAI_API_KEY", "")
+        _az_dep = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "")
+        try:
+            _az_end = _az_end or st.secrets.get("azure_openai_endpoint", "")
+            _az_key = _az_key or st.secrets.get("azure_openai_api_key", "")
+            _az_dep = _az_dep or st.secrets.get("azure_openai_deployment", "")
+        except (KeyError, FileNotFoundError, AttributeError):
+            pass
+        st.info(
+            "Recomendado para órgãos federais. Chaves só no **Portal Azure** (ou peça à TI). "
+            "Guia: `automacao/CONFIGURAR_AZURE_OPENAI.md`."
+        )
+        st.markdown(
+            "[Microsoft — criar recurso Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/how-to/create-resource)"
+        )
         llm_cfg_kwargs["azure_endpoint"] = st.text_input(
-            "Endpoint Azure:", placeholder="https://meu-recurso.openai.azure.com/"
+            "Endpoint Azure:",
+            value=_az_end,
+            placeholder="https://meu-recurso.openai.azure.com/",
+            help="Resource → Keys and Endpoint → Endpoint",
         )
         llm_cfg_kwargs["azure_api_key"] = st.text_input(
-            "API Key Azure:", type="password"
+            "API Key Azure:",
+            type="password",
+            value=_az_key,
         )
         llm_cfg_kwargs["azure_deployment"] = st.text_input(
-            "Nome do Deployment:", placeholder="gpt-4o-mcid"
+            "Nome do Deployment:",
+            value=_az_dep,
+            placeholder="gpt-4o-mcid",
+            help="Nome dado no Azure OpenAI Studio → Deployments (não só o nome do modelo).",
         )
 
     elif provider == "groq":
@@ -522,7 +545,7 @@ with _col_trabalho:
                         f"**1.2.** Em síntese, o proponente busca captação via **debêntures incentivadas** para "
                         f"{dados.get('objeto', 'a intervenção proposta')}.\n\n"
                         f"**1.3.** Nesse sentido, solicita o enquadramento no arcabouço de **debêntures incentivadas**, "
-                        f"nos termos da legislação aplicável (ex.: Lei nº 12.431/2012 e normativos correlatos)."
+                        f"nos termos da legislação aplicável (ex.: Lei nº 12.431/2011 e normativos correlatos)."
                     )
 
                 progress.progress(0.82, text=f"Gerando Análise Normativa ({_ia_label})...")
@@ -1006,14 +1029,18 @@ with _col_trabalho:
         if st.session_state.dados_legis:
             legis = st.session_state.dados_legis
             st.subheader(SUBHEADER_LEGIS_MCID)
+            st.caption(
+                "O parecer de **debêntures incentivadas** fundamenta-se na **Lei nº 12.431/2011** e normas CVM. "
+                "Abaixo: conferência de vigência de normas no portal MCID (referência institucional, não substitui o arcabouço da emissão)."
+            )
             if legis.acessivel:
                 lc1, lc2 = st.columns(2)
                 lc1.metric(
-                    "IN MCID nº 18/2025",
+                    "IN MCID 18/2025 (portal — outros programas)",
                     "Vigente" if legis.in_18_2025_vigente else "Não localizada",
                 )
                 lc2.metric(
-                    "Res. CCFGTS nº 897/2018",
+                    "Res. CCFGTS 897/2018 (portal — FGTS)",
                     "Vigente" if legis.res_897_2018_vigente else "Não localizada",
                 )
                 with st.expander("Normativos encontrados"):

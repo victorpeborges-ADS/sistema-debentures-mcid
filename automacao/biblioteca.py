@@ -3,11 +3,14 @@ Gerencia a biblioteca de pareceres validados e o registro de feedbacks.
 
 - pareceres_validados/  : pareceres .md aprovados, usados como few-shot dinâmico
 - feedbacks/feedbacks.jsonl : sugestões e avaliações da equipe
+
+Few-shot e guia de estilo ignoram ficheiros cujo texto indique parecer de **Pro-Cidades**
+(ruído para o produto Debêntures). Coloque apenas exemplos alinhados à Lei 12.431/2011.
 """
 
 import json
 import logging
-import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -22,6 +25,51 @@ FEEDBACKS_FILE = FEEDBACKS_DIR / "feedbacks.jsonl"
 # Garante que as pastas existem na inicialização do módulo
 PARECERES_DIR.mkdir(parents=True, exist_ok=True)
 FEEDBACKS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Quando não há .md elegíveis, o motor ainda recebe orientação mínima (sem ruído Pro-Cidades).
+GUIA_ESTILO_PADRAO_DEBENTURES = """
+## GUIA DE ESTILO (padrão — biblioteca sem exemplos .md elegíveis)
+
+• Fundamentação: **Lei nº 12.431/2011** e normas CVM aplicáveis a debêntures incentivadas; não use IN MCID 18/2025 como base do enquadramento.
+• Parágrafos numerados (**1.1.**, **6.3.**, etc.) e registo jurídico-administrativo.
+• Normas em **negrito**; dados municipais com indicação de fonte (IBGE, CAPAG, etc.).
+• Terceira pessoa, sem copiar dados de outros municípios.
+"""
+
+
+def _texto_indica_conteudo_procidades(amostra: str) -> bool:
+    """Heurística: texto de parecer claramente do programa Pro-Cidades (excluir do few-shot)."""
+    if not amostra or not amostra.strip():
+        return False
+    t = amostra.lower()
+    if "pró-cidades" in t or "pro-cidades" in t:
+        return True
+    if "programa pró-cidades" in t or "programa pro-cidades" in t:
+        return True
+    if re.search(r"\b8\.6\.6\.3\.4\b", amostra):
+        return True
+    return False
+
+
+def _parecer_elegivel_fewshot(path: Path) -> bool:
+    """True se o ficheiro pode ser usado como referência de estilo para Debêntures."""
+    try:
+        amostra = path.read_text(encoding="utf-8")[:20000]
+    except OSError as e:
+        logger.warning("Não foi possível ler %s: %s", path.name, e)
+        return False
+    if _texto_indica_conteudo_procidades(amostra):
+        logger.info(
+            "Biblioteca: ignorado para few-shot (conteúdo Pro-Cidades / IN 18 típico): %s",
+            path.name,
+        )
+        return False
+    return True
+
+
+def listar_pareceres_para_fewshot() -> List[Path]:
+    """Lista .md aptos a few-shot (exclui ruído Pro-Cidades)."""
+    return [p for p in listar_pareceres() if _parecer_elegivel_fewshot(p)]
 
 
 # ---------------------------------------------------------------------------
@@ -43,7 +91,7 @@ def get_exemplos_fewshot(max_exemplos: int = 3, max_chars_por_exemplo: int = 600
     LEGADO — mantido para compatibilidade. Prefira get_exemplos_secao().
     Retorna pareceres completos truncados. Não usar para novas chamadas LLM.
     """
-    arquivos = listar_pareceres()
+    arquivos = listar_pareceres_para_fewshot()
     if not arquivos:
         return ""
     blocos = []
@@ -116,7 +164,7 @@ _SECAO_KEYWORDS = {
         "nome": "Análise de Enquadramento",
         "inicio": ["ANÁLISE DE ENQUADRAMENTO", "5.\nANÁL", "6.\nANÁL",
                    "## 5. ANÁL", "## 6. ANÁL",
-                   "O Pró-Cidades tem por objetivo"],
+                   "debêntures incentivadas", "Lei nº 12.431"],
         "fim_proximo": ["ATENDIMENTO AOS CRITÉRIOS", "CHECKLIST", "CONCLUSÃO",
                         "6.\nATE", "7.\nCHE", "7.\nCON", "## 7."],
     },
@@ -194,7 +242,7 @@ def get_exemplos_secao(
         max_exemplos: quantos pareceres da biblioteca usar
         max_chars: limite de chars por exemplo extraído
     """
-    arquivos = listar_pareceres()
+    arquivos = listar_pareceres_para_fewshot()
     if not arquivos:
         return ""
 
@@ -226,14 +274,15 @@ def get_exemplos_secao(
 
     instrucao = (
         f"\n\n## REFERÊNCIA DE ESTILO — {nome_secao.upper()}\n"
-        f"Os trechos abaixo são exemplos REAIS de pareceres aprovados na biblioteca.\n"
+        f"Os trechos abaixo são exemplos de pareceres **debêntures incentivadas** na biblioteca.\n"
         f"Use-os EXCLUSIVAMENTE como modelo de:\n"
         f"  • Estrutura e numeração dos parágrafos\n"
         f"  • Tom e linguagem jurídico-administrativa\n"
         f"  • Nível de detalhe técnico esperado\n"
         f"  • Padrão de citação de normas e fontes\n"
         f"NÃO copie nomes de municípios, valores, datas ou dados técnicos destes exemplos.\n"
-        f"Substitua TODO o conteúdo factual pelos dados do projeto atual.\n\n"
+        f"Substitua TODO o conteúdo factual pelos dados do projeto atual.\n"
+        f"NÃO reproduza linguagem do Programa Pró-Cidades ou IN MCID 18/2025 como fundamento.\n\n"
     )
     return instrucao + "\n\n".join(blocos) + "\n\n"
 
@@ -246,15 +295,14 @@ def get_guia_estilo() -> str:
     Detecta padrões de escrita nos textos reais, incluindo o formato de PDF
     extraído (parágrafos numerados como "1.\n2.") e Markdown gerado pelo sistema.
     """
-    import re
-    arquivos = listar_pareceres()
+    arquivos = listar_pareceres_para_fewshot()
     if not arquivos:
-        return ""
+        return GUIA_ESTILO_PADRAO_DEBENTURES.strip() + "\n"
 
     total = len(arquivos)
 
     # Indicadores de padrões de escrita
-    usa_negrito_normas = 0       # **Lei nº**, **IN MCID**
+    usa_negrito_normas = 0       # **Lei nº**, **CVM**
     usa_numeracao_ponto = 0      # 4.1. ou **4.1.**
     usa_citacao_inline = 0       # (Fonte: IBGE)
     usa_linguagem_formal = 0     # "nos termos do", "in verbis", "destarte"
@@ -264,7 +312,11 @@ def get_guia_estilo() -> str:
     for arq in arquivos[:5]:
         try:
             txt = arq.read_text(encoding="utf-8")
-            if re.search(r"(?:IN MCID|Lei n[oº°]|Decreto n[oº°]|Resolução)", txt, re.IGNORECASE):
+            if re.search(
+                r"(?:Lei n[oº°]\s*12\.431|Lei n[oº°]|Decreto n[oº°]|Resolução|CVM)",
+                txt,
+                re.IGNORECASE,
+            ):
                 usa_negrito_normas += 1
             if re.search(r"\d+\s*\.\s*\d+\s*\.", txt):
                 usa_numeracao_ponto += 1
@@ -283,7 +335,7 @@ def get_guia_estilo() -> str:
         "parágrafos numerados sequencialmente: 1.1., 1.2., 4.1., 4.2., etc.",
     ]
     if usa_negrito_normas > 0:
-        padroes.append("normas citadas na íntegra: 'IN MCID nº 18, de 25 de abril de 2025'")
+        padroes.append("normas citadas na íntegra: 'Lei nº 12.431, de 3 de junho de 2011'")
     if usa_linguagem_formal > 0:
         padroes.append("expressões jurídico-formais: 'nos termos de', 'destarte', 'consoante'")
     if usa_terceira_pessoa > 0:
@@ -309,6 +361,11 @@ def salvar_parecer_na_biblioteca(nome_arquivo: str, conteudo_md: str) -> Path:
         nome_arquivo += ".md"
     destino = PARECERES_DIR / nome_arquivo
     destino.write_text(conteudo_md, encoding="utf-8")
+    if _texto_indica_conteudo_procidades(conteudo_md[:20000]):
+        logger.warning(
+            "Parecer salvo contém marcas de Pro-Cidades / IN 18 típico — será ignorado no few-shot: %s",
+            destino.name,
+        )
     logger.info("Parecer salvo na biblioteca: %s", destino)
     return destino
 
@@ -325,6 +382,7 @@ def remover_parecer(nome_arquivo: str) -> bool:
 def info_biblioteca() -> dict:
     """Retorna estatísticas resumidas da biblioteca."""
     arquivos = listar_pareceres()
+    elegiveis = listar_pareceres_para_fewshot()
     total_chars = 0
     for arq in arquivos:
         try:
@@ -333,6 +391,8 @@ def info_biblioteca() -> dict:
             pass
     return {
         "total_pareceres": len(arquivos),
+        "pareceres_elegiveis_fewshot": len(elegiveis),
+        "pareceres_excluidos_ruido": max(0, len(arquivos) - len(elegiveis)),
         "total_chars": total_chars,
         "arquivos": [
             {

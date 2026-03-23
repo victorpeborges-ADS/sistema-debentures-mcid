@@ -38,16 +38,13 @@ TEXTO_COMPETENCIA = """**2.1.** Com base na **Lei nº 14.600, de 19 de junho de 
 > *(…)*
 > *VII – firmar parcerias com institutos de pesquisa, universidades, organizações não governamentais e privadas para fomentar o desenvolvimento e a difusão de inovações urbanas nas áreas de competência do Ministério; e"*. (Grifos nossos)
 
-**2.2.** Em circunstâncias semelhantes à presente análise técnica, cabe ao Ministério das Cidades, por meio do DAC, avaliar a priorização por este Ministério Setorial de projetos de modernização da rede de iluminação pública municipal. Tal atribuição tem por amparo o disposto na **Portaria MCID nº 359, de 9 de abril de 2025**, que regulamenta os critérios e as condições complementares para o enquadramento e acompanhamento dos projetos de investimentos considerados como prioritários na área de infraestrutura para o setor de iluminação pública, cabendo ao Ministério aprovar previamente o enquadramento de projetos de investimento em infraestrutura do setor de iluminação pública, como se segue:
+**2.2.** Na hipótese de **operações de captação por debêntures incentivadas** destinadas a projetos de infraestrutura ou de interesse urbano, aplica-se o regime da **Lei nº 12.431, de 3 de junho de 2011**, alterada, e normas editadas pela **Comissão de Valores Mobiliários (CVM)** e pelos órgãos competentes, observadas as atribuições do MCID no âmbito das políticas de desenvolvimento urbano e das diretrizes federais para cidades inteligentes e infraestrutura urbana.
 
-> *"Art. 3° Os projetos de investimento em infraestrutura do setor de iluminação pública deverão ser objeto de aprovação prévia do Ministério das Cidades, nos termos do § 2° do art. 3° do Decreto n° 11.964, de 26 de março de 2024.*
-> *Art. 4° Os projetos de investimento serão considerados prioritários após a publicação de portaria de aprovação pelo Ministro de Estado das Cidades, nos termos do art. 6º do Decreto nº 11.964, de 26 de março de 2024"*. (Grifos nossos)
+**2.3.** Nos termos do **Decreto nº 12.210, de 3 de outubro de 2024**, compete ao Ministério das Cidades qualificar a política federal de fomento a parcerias em empreendimentos públicos dos Estados, do Distrito Federal e dos Municípios em transformação digital para cidades inteligentes no âmbito do Programa de Parcerias de Investimentos da Presidência da República (PPI). Esta competência reforça a prevista na Lei nº 14.600, de 2023, detalhada nos incisos I e VII do art. 19 do Decreto nº 12.553, de 2025.
 
-**2.3.** Ademais, nos termos do **Decreto nº 12.210 de 3 de outubro de 2024**, compete ao Ministério das Cidades qualificar a política federal de fomento a parcerias em empreendimentos públicos dos Estados, do Distrito Federal e dos Municípios em transformação digital para cidades inteligentes no âmbito do Programa de Parcerias de Investimentos da Presidência da República (PPI). Esta competência reforça a prevista na Lei nº 14.600, de 2023, detalhada nos incisos I e VII do art. 19 do Decreto nº 12.553, de 2025.
+**2.4.** A presente análise restringe-se ao **enquadramento técnico de proposta vinculada a debêntures incentivadas** (Lei nº 12.431/2011 e normas complementares da CVM e demais órgãos competentes), **não** se confundindo com pareceres ou critérios próprios de **outras fontes de financiamento federal** (incluindo operações com recursos do FGTS reguladas em normas específicas de programas distintos).
 
-**2.4.** As operações do Programa de Desenvolvimento Urbano – Pró-Cidades, nos termos do Anexo da Resolução do Conselho Curador do Fundo de Garantia de Tempo de Serviço – CCFGTS nº 897, de 11 de setembro de 2018, estão subordinadas às normas do Gestor da Aplicação, ou seja, à regulamentação deste Ministério, inclusive a **Instrução Normativa (IN) nº 18, de 25 de abril de 2025, do Ministério das Cidades (MCID)**.
-
-**2.5.** Destarte, por caber à Coordenação-Geral de Modernização Urbana (CGMUR) tanto realizar a análise técnica dos projetos de iluminação pública quanto a de projetos de modernização tecnológica urbana no âmbito do DAC, nas próximas seções serão apresentadas as análises realizadas por esta Unidade."""
+**2.5.** Destarte, cabe à Coordenação-Geral de Modernização Urbana (CGMUR) analisar os elementos técnicos e documentais pertinentes à **operação de debêntures incentivadas** e ao objeto de infraestrutura urbana descrito na proposta, conforme as seções seguintes."""
 
 # ---------------------------------------------------------------------------
 # Few-shot: formato oficial (estilo dos pareceres reais do MCID)
@@ -627,9 +624,9 @@ Campos:
 - proponente: nome completo do proponente/concessionária
 - cnpj: CNPJ no formato XX.XXX.XXX/XXXX-XX
 - natureza: natureza jurídica (ex: "Pessoa jurídica de direito privado" ou "Órgão Público do Poder Executivo Municipal")
-- modalidade: "Modernização tecnológica urbana" ou "Reabilitação de Áreas Urbanas"
+- modalidade: tipo de intervenção urbana/infraestrutura (ex.: "Modernização tecnológica urbana", "Reabilitação de áreas urbanas" ou descrição equivalente na proposta)
 - objeto: descrição do objeto da proposta (completa, 1-3 frases)
-- valor_financiamento: valor em R$ do financiamento (ex: "R$ 25.000.000,00")
+- valor_financiamento: valor em R$ da operação / emissão prevista (parcela principal) (ex: "R$ 25.000.000,00")
 - valor_contrapartida: valor em R$ da contrapartida
 - valor_total: valor total do investimento
 - municipio: nome do município beneficiado
@@ -641,7 +638,7 @@ Campos:
 - contrato_concessao: número do contrato de concessão/PPP mencionado
 - responsavel_tecnico: nome do profissional responsável técnico e seu CREA
 - componentes_tecnicos: lista dos principais componentes técnicos do projeto com quantitativos
-  (ex: "substituição de 40.806 pontos LED, telegestão em 13.787 pontos, CCO, iluminação especial em 18 monumentos")
+  (ex: quantitativos de rede, equipamentos, extensões, unidades — conforme o objeto da proposta)
   Inclua: quantidades de pontos/unidades, equipamentos específicos (CCO, telegestão, sensores), áreas especiais
 - reducao_consumo_pct: percentual de redução no consumo de energia (ex: "46,64")
 - reducao_co2_ton: redução estimada de emissões de CO2 em toneladas (apenas número, ex: "969")
@@ -672,18 +669,19 @@ def chamada1_extracao(texto_pdf: str, host_or_config, model: str = "") -> dict:
 # ---------------------------------------------------------------------------
 
 _SYSTEM_SUMARIO_BASE = """Você é um analista técnico sênior da Coordenação-Geral de Modernização Urbana do Ministério das Cidades (CGMUR/DAC/SNDUM-MCID).
-Redija o Sumário Executivo (Seção 1) de um Parecer de Mérito do Programa Pró-Cidades.
+Redija o Sumário Executivo (Seção 1) de um Parecer de Mérito sobre **enquadramento de proposta de investimento com captação via debêntures incentivadas** (Lei nº 12.431/2011, alterada).
 Use linguagem técnica e jurídico-administrativa formal. Escreva em português.
 
 REGRAS OBRIGATÓRIAS:
 - Escreva EXATAMENTE 3 parágrafos numerados: **1.1.**, **1.2.**, **1.3.**
-- Parágrafo **1.1.**: "O presente Parecer de Mérito apresenta a análise de enquadramento, para investimentos com recursos do Programa de Desenvolvimento Urbano (Pró-Cidades), destinados à [modalidade] do Município de [município/UF], nos termos pleiteados pelo [proponente] (CNPJ [cnpj])..."
+- Parágrafo **1.1.**: "O presente Parecer de Mérito apresenta a análise de enquadramento, para **operação de debêntures incentivadas** relacionada a [modalidade/objeto] no Município de [município/UF], nos termos pleiteados pelo [proponente] (CNPJ [cnpj])..."
   → Se houver contrato de concessão ou PPP, mencione-o na frase final do 1.1.
-- Parágrafo **1.2.**: "Em síntese, [proponente] busca financiamento junto ao Pró-Cidades para [objeto detalhado]."
-  → OBRIGATÓRIO em 1.2.: (a) componentes técnicos específicos COM quantitativos numéricos (ex: "40.806 pontos LED, telegestão em 13.787 pontos, CCO, 18 monumentos"); (b) valor total do investimento; (c) percentual dos recursos FGTS e percentual da contrapartida (ex: "sendo R$ X (71,4%) em recursos do FGTS e R$ Y (28,6%) de contrapartida")
-- Parágrafo **1.3.**: "Nesse sentido, solicita o enquadramento do Projeto no Programa Pró-Cidades, [modalidade], com base no subitem 8.6.6.3.4 da IN MCID nº 18, de 25 de abril de 2025."
-- Use negrito (**texto**) para destacar: nome do proponente, modalidade, componentes técnicos principais, valor total, percentuais, subitem normativo
-- PROIBIDO: histórico do município, topografia, dados sociodemográficos genéricos, texto em primeira pessoa
+  → NÃO mencione Programa Pró-Cidades, IN MCID 18/2025 como base do enquadramento nem FGTS como fonte principal.
+- Parágrafo **1.2.**: "Em síntese, [proponente] busca **estruturar captação por debêntures incentivadas** para [objeto detalhado]."
+  → OBRIGATÓRIO em 1.2.: (a) componentes técnicos específicos COM quantitativos numéricos extraídos da proposta; (b) valor total do investimento ou da operação; (c) percentual da parcela principal e da contrapartida (ex.: "sendo R$ X (71,4%) referentes à parcela principal e R$ Y (28,6%) de contrapartida")
+- Parágrafo **1.3.**: "Nesse sentido, solicita-se o enquadramento técnico da operação no regime de **debêntures incentivadas**, com fundamento na **Lei nº 12.431/2011** e na documentação da emissão, observadas as normas da CVM e a compatibilidade do objeto com infraestrutura / política urbana federal."
+- Use negrito (**texto**) para destacar: nome do proponente, modalidade, componentes técnicos principais, valor total, percentuais, diplomas legais
+- PROIBIDO: Programa Pró-Cidades, IN MCID 18 como fundamento principal, histórico genérico do município, texto em primeira pessoa
 {guia_estilo}"""
 
 PROMPT_SUMARIO = """Redija o Sumário Executivo (parágrafos 1.1, 1.2 e 1.3) para o seguinte projeto:
@@ -697,7 +695,7 @@ DADOS COMPLEMENTARES DO MUNICÍPIO (IBGE):
 - CAPAG (Tesouro Nacional): {capag}
 
 PERCENTUAIS CALCULADOS (use obrigatoriamente em 1.2):
-- Financiamento FGTS: {pct_financiamento:.1f}% do investimento total
+- Parcela principal da operação: {pct_financiamento:.1f}% do investimento total
 - Contrapartida: {pct_contrapartida:.1f}% do investimento total
 
 {exemplos_secao}
@@ -741,23 +739,23 @@ def chamada2_sumario(dados: dict, dados_municipio: dict, host_or_config, model: 
 # ---------------------------------------------------------------------------
 
 _SYSTEM_ANALISE_BASE = """Você é um analista técnico sênior da Coordenação-Geral de Modernização Urbana do Ministério das Cidades (CGMUR/DAC/SNDUM-MCID).
-Redija a Análise de Enquadramento do Projeto Pró-Cidades (Seção 6 do parecer).
+Redija a Análise de Enquadramento da **operação de debêntures incentivadas** (Seção 6 do parecer).
 Use linguagem jurídico-administrativa formal, com parágrafos numerados. Escreva em português.
 
 ESTRUTURA OBRIGATÓRIA (7 parágrafos numerados de 6.1 a 6.7):
-- **6.1.** Objetivos gerais do Pró-Cidades com menção ao Estatuto da Cidade (Lei nº 10.257/2001) e Estatuto da Metrópole (Lei nº 13.089/2015)
-- **6.2.** Definição da Modalidade 2 — Modernização tecnológica urbana: duas iniciativas: (i) soluções IoT/cidades inteligentes; (ii) apoio à gestão urbana. Mencione o Decreto nº 12.210/2024.
-- **6.3.** Enquadramento no subitem 8.6.6.3.4 da IN MCID nº 18/2025. Use EXCLUSIVAMENTE a fórmula: "São exemplos de intervenção passíveis de financiamento aqueles previstos no **subitem 8.6.6.3.4 da IN MCID nº 18, de 25 de abril de 2025**: *"iluminação pública inteligente, com o uso de tecnologias mais eficientes para fins de iluminação pública para todas as pessoas, sistema de telegestão para monitoramento em tempo real; ..."*."
-  ⚠️ PROIBIDO: inventar ou reescrever o texto do subitem — use exatamente essa citação.
-- **6.4.** Análise de por que ESTE projeto se enquadra nesse subitem (relacione o objeto concreto da proposta com o subitem 8.6.6.3.4)
-- **6.5.** Análise do mutuário (natureza jurídica, SPE, PPP, item 8.1 da Res. CCFGTS nº 897/2018)
-- **6.6.** Análise da contrapartida: percentual calculado, comparação com mínimo de 5% (subitem 3.2 da Res. CCFGTS 897/2018 e art. 22 da Res. CCFGTS 702/2012)
-- **6.7.** Conclusão parcial + alinhamento com Carta Brasileira de Cidades Inteligentes
+- **6.1.** Finalidade das debêntures incentivadas (Lei nº 12.431/2011) e articulação com políticas de desenvolvimento urbano; menção ao Estatuto da Cidade (Lei nº 10.257/2001) e ao Estatuto da Metrópole (Lei nº 13.089/2015), quando pertinente ao objeto.
+- **6.2.** Compatibilidade do objeto com **infraestrutura** ou **interesse de política urbana** (incluindo cidades inteligentes / transformação digital). Mencione o **Decreto nº 12.210/2024** quando couber.
+- **6.3.** Enquadramento no regime de **debêntures incentivadas**: lei aplicável, natureza das despesas ou do projeto, observância das normas da **CVM** e requisitos legais da emissão (sem citar subitens da IN MCID 18/2025 nem Programa Pró-Cidades).
+- **6.4.** Relação entre o **objeto concreto** da proposta e os requisitos de elegibilidade da infraestrutura / política urbana considerada.
+- **6.5.** Análise do emissor / proponente (natureza jurídica, SPE, contratos de concessão ou PPP, conforme documentação).
+- **6.6.** Análise da estrutura financeira: parcela principal, contrapartida ou recursos próprios, coerência com os valores informados na proposta (sem impor regra de 5% da Res. CCFGTS salvo se a proposta explicitamente se referir a esse arcabouço).
+- **6.7.** Conclusão parcial + alinhamento com **Carta Brasileira de Cidades Inteligentes** e diretrizes nacionais de desenvolvimento urbano.
 
 REGRAS:
 - Use negrito (**texto**) para realçar normas e modalidade
-- Cite apenas os dispositivos exatos: IN MCID nº 18/2025, Res. CCFGTS 897/2018, Res. CCFGTS 702/2012, Lei 8.036/1990, Lei 10.257/2001, Lei 13.089/2015, Decreto 12.210/2024
-- ⚠️ NUNCA invente artigos, subitens ou transcrições além das explicitamente indicadas acima
+- Cite apenas diplomas legais aplicáveis à **debêntures incentivadas** e ao objeto urbano: Lei 12.431/2011, normas CVM quando relevantes, Lei 10.257/2001, Lei 13.089/2015, Decreto 12.210/2024, e demais normas que o texto da proposta invocar.
+- PROIBIDO: tratar o parecer como análise do Programa Pró-Cidades, citar IN MCID nº 18/2025 como base do enquadramento ou reproduzir subitens 8.6.x dessa IN.
+- NUNCA invente artigos ou transcrições além das indicadas ou do texto da proposta
 {guia_estilo}"""
 
 PROMPT_ANALISE = """Redija a Análise de Enquadramento (parágrafos 6.1 a 6.7) com base nos dados abaixo.
@@ -809,7 +807,7 @@ def chamada3_analise(dados: dict, conformidade: str, capag_info: dict,
 # ---------------------------------------------------------------------------
 
 SYSTEM_CHECKLIST = """Você é um analista documental do Ministério das Cidades.
-Analise o texto do PDF e determine o status de cada item do checklist do Anexo II da IN MCID nº 18/2025.
+Analise o texto do PDF e determine o status de cada item do checklist de **documentação da operação (debêntures incentivadas / infraestrutura urbana)**.
 Retorne APENAS JSON válido, sem explicações."""
 
 CHECKLIST_ITEMS = [
@@ -823,7 +821,7 @@ CHECKLIST_ITEMS = [
     {"id": 8, "doc": "Outros (especificar se solicitados)"},
 ]
 
-PROMPT_CHECKLIST = """Analise o texto do PDF abaixo e determine, para cada item do Anexo II da IN MCID nº 18/2025, se o documento correspondente está presente ou mencionado.
+PROMPT_CHECKLIST = """Analise o texto do PDF abaixo e determine, para cada item do checklist abaixo (documentação típica de operação de debêntures incentivadas em contexto urbano), se o documento correspondente está presente ou mencionado.
 
 ITENS DO CHECKLIST:
 {itens}
@@ -837,7 +835,7 @@ REGRAS para determinação do status:
 DICAS DE INTERPRETAÇÃO:
 - Item 1 (perímetro): "Cumprida" apenas se .kml/.kmz ou imagem satélite delimitada; foto genérica = "Atendido parcialmente"; seção XI vazia = "Não disponível"
 - Item 4 (Plano Diretor): para SPE/concessionária privada = "Não cabível"
-- Item 5 (acessibilidade): para projetos de iluminação = "Não cabível"
+- Item 5 (acessibilidade): para projetos exclusivamente de iluminação/rede elétrica sem componente de acesso físico = "Não cabível"
 - Item 6 (titularidade): para vias públicas concedidas = "Não cabível"
 - Item 7 (anuência/PPP): "Cumprida" se há contrato de concessão ou PPP mencionado
 
@@ -959,9 +957,9 @@ def avaliar_conformidade(dados: dict) -> list[dict]:
         "reabilitação de áreas urbanas",
     ]
     resultados.append({
-        "regra": "Modalidade elegível (IN MCID nº 18/2025)",
+        "regra": "Objeto urbano/infraestrutura indicado (compatível com debêntures incentivadas — Lei 12.431/2011)",
         "conforme": any(m in modalidade.lower() for m in modalidades_elegiveis) if modalidade else None,
-        "detalhe": f"Modalidade: {modalidade}" if modalidade else "Não informada",
+        "detalhe": f"Modalidade/objeto: {modalidade}" if modalidade else "Não informada",
     })
 
     try:
@@ -970,26 +968,26 @@ def avaliar_conformidade(dados: dict) -> list[dict]:
         vt = vf + vc
         pct = (vc / vt * 100) if vt > 0 else 0
         resultados.append({
-            "regra": "Contrapartida >= 5% (Res. CCFGTS nº 897/2018, subitem 3.2)",
+            "regra": "Contrapartida >= 5% do total da operação (referência de boa prática — verificar aderência à proposta)",
             "conforme": pct >= 5.0,
             "detalhe": f"Contrapartida: {pct:.1f}%",
         })
     except Exception:
         resultados.append({
-            "regra": "Contrapartida >= 5% (Res. CCFGTS nº 897/2018, subitem 3.2)",
+            "regra": "Contrapartida >= 5% do total da operação (referência de boa prática — verificar aderência à proposta)",
             "conforme": None,
             "detalhe": "Valores financeiros insuficientes para cálculo",
         })
 
     natureza = dados.get("natureza", "")
     resultados.append({
-        "regra": "Proponente elegível (Res. CCFGTS nº 897/2018, item 8.1)",
+        "regra": "Identificação do proponente / emissor (natureza jurídica)",
         "conforme": bool(natureza),
         "detalhe": f"Natureza: {natureza}" if natureza else "Não informada",
     })
 
     resultados.append({
-        "regra": "Aplicação restrita à zona urbana (Lei nº 8.036/1990, art. 5°)",
+        "regra": "Âmbito urbano da intervenção (compatível com objeto de infraestrutura)",
         "conforme": None,
         "detalhe": "Verificar perímetro da área de intervenção no Checklist (item 1)",
     })
@@ -1467,9 +1465,9 @@ Coordenação-Geral de Modernização Urbana
 
 # Parecer de Mérito — Proposta Técnica nº {num_proposta}/CGMUR/DAC/SNDUM-MCID
 
-**Referência:** Proposta Técnica nº {num_proposta} — Programa Pró-Cidades  
+**Referência:** Proposta Técnica nº {num_proposta} — **Debêntures incentivadas** (Lei nº 12.431/2011)  
 **Processo SEI:** {dados.get("processo_sei", "___")}  
-**Assunto:** Parecer de Mérito sobre a proposta de enquadramento na Modalidade 2 do Programa de Desenvolvimento Urbano de projeto para {objeto[:180] + "..." if len(objeto) > 180 else objeto}, apresentado por {proponente}.
+**Assunto:** Parecer de Mérito sobre enquadramento técnico de operação de **debêntures incentivadas** para {objeto[:180] + "..." if len(objeto) > 180 else objeto}, apresentado por {proponente}.
 
 ---"""
 
@@ -1494,7 +1492,7 @@ Coordenação-Geral de Modernização Urbana
 
 **3.1.** Os dados da Proposta Técnica nº {num_proposta} encontram-se apontados abaixo (Quadro 1).
 
-**Quadro 1** – Dados da Proposta de modernização tecnológica urbana apresentada por {proponente}
+**Quadro 1** – Dados da proposta de operação de debêntures incentivadas apresentada por {proponente}
 
 | Campo | Valor |
 |-------|-------|
@@ -1526,14 +1524,14 @@ Coordenação-Geral de Modernização Urbana
     sec5 = f"""\
 ## 5. DESCRIÇÃO DA PROPOSTA
 
-**5.1.** {proponente} submeteu ao Ministério das Cidades, por intermédio do Programa de Desenvolvimento das Cidades (Pró-Cidades), a **Proposta Técnica nº {num_proposta}**, solicitando financiamento de {dados.get("valor_financiamento", "___")} para {objeto}.{"" if not contrato else f" O Projeto decorre do **{contrato}** celebrado com o poder público municipal."}{"" if not resp_tec else f" O responsável técnico designado é **{resp_tec}**."}
+**5.1.** {proponente} submeteu ao Ministério das Cidades a **Proposta Técnica nº {num_proposta}**, visando **estruturação de captação por debêntures incentivadas** nos termos da **Lei nº 12.431/2011**, no valor indicado de **{dados.get("valor_financiamento", "___")}** para {objeto}.{"" if not contrato else f" O Projeto decorre do **{contrato}** celebrado com o poder público municipal."}{"" if not resp_tec else f" O responsável técnico designado é **{resp_tec}**."}
 
-**5.2.** O montante total do investimento é de **{dados.get("valor_total", "___")}**, sendo **{dados.get("valor_financiamento", "___")}** financiados com recursos do Fundo de Garantia por Tempo de Serviço (FGTS) via Pró-Cidades e **{dados.get("valor_contrapartida", "___")}** correspondentes à contrapartida do proponente.
+**5.2.** O montante total do investimento é de **{dados.get("valor_total", "___")}**, sendo **{dados.get("valor_financiamento", "___")}** referentes à **parcela principal da operação** (emissão / aplicação prevista) e **{dados.get("valor_contrapartida", "___")}** correspondentes à contrapartida ou recurso próprio do proponente, conforme a documentação apresentada (**captação por debêntures incentivadas**, não por linha de crédito com recursos do FGTS).
 
 **5.3.** O projeto encontra-se alinhado às diretrizes da Carta Brasileira de Cidades Inteligentes e à Política Nacional de Desenvolvimento Urbano, objetivando a melhoria da qualidade dos serviços públicos prestados à população, a otimização do consumo energético e a ampliação da segurança e do conforto nos espaços urbanos."""
 
     # ---- Seção 6: Análise de Enquadramento ----
-    sec6 = f"## 6. ANÁLISE DE ENQUADRAMENTO DO PROJETO PRÓ-CIDADES\n\n{analise}"
+    sec6 = f"## 6. ANÁLISE DE ENQUADRAMENTO — DEBÊNTURES INCENTIVADAS\n\n{analise}"
 
     # ---- Seção 7: Atendimento Normativo (Checklist) ----
     checklist_rows = ""
@@ -1548,11 +1546,10 @@ Coordenação-Geral de Modernização Urbana
     ]
 
     analise_checklist = (
-        "\n\n**7.2.** Uma vez que a aplicação dos recursos financeiros do Pró-Cidades encontra-se "
-        "territorialmente restrita à zona urbana dos municípios, conforme especificado no **art. 5° "
-        "da Lei nº 8.036, de 11 de maio de 1990**, que dispõe sobre o FGTS, a comprovação da "
-        "aplicação dos recursos na área urbana assume importância central, razão pela qual torna-se "
-        "necessário avaliar o cumprimento do especificado no item 1 do Quadro 3.\n"
+        "\n\n**7.2.** Para operações de **debêntures incentivadas** com objeto de infraestrutura urbana, "
+        "a comprovação da delimitação da intervenção e da documentação de suporte assume importância "
+        "central; avalia-se o cumprimento do especificado no item 1 do Quadro 3 e demais itens "
+        "aplicáveis.\n"
     )
     if pendencias:
         itens_pend = ", ".join(f"item {p['id']}" for p in pendencias)
@@ -1562,7 +1559,7 @@ Coordenação-Geral de Modernização Urbana
             f"Recomenda-se que o Proponente adote as providências necessárias para o saneamento "
             f"das exigências antes do deferimento final.\n"
             f"\n**7.4.** Por tudo, entende-se que a Proponente cumpriu os requisitos de mérito "
-            f"examinados no presente Parecer para fazer jus ao financiamento do Pró-Cidades, "
+            f"examinados no presente Parecer para fazer jus ao prosseguimento da operação de debêntures incentivadas, "
             f"restando, contudo, a necessidade de adotar as providências mencionadas nos itens "
             f"pendentes deste Quadro 3."
         )
@@ -1570,15 +1567,15 @@ Coordenação-Geral de Modernização Urbana
         analise_checklist += (
             "\n**7.3.** Da análise documental realizada, todos os itens aplicáveis do Quadro 3 "
             "encontram-se cumpridos ou devidamente justificados como não cabíveis, evidenciando "
-            "que a Proponente atendeu integralmente às exigências do Anexo II da IN MCID nº 18/2025.\n"
+            "que a Proponente atendeu integralmente às exigências documentais aplicáveis à operação.\n"
             "\n**7.4.** Por tudo, entende-se que a Proponente cumpriu integralmente os requisitos "
-            "de mérito examinados no presente Parecer para fazer jus ao financiamento do Pró-Cidades."
+            "de mérito examinados no presente Parecer para fazer jus ao prosseguimento da operação de debêntures incentivadas."
         )
 
     sec7 = f"""\
 ## 7. ATENDIMENTO AOS CRITÉRIOS E ÀS CONDIÇÕES NORMATIVAS
 
-**7.1.** Com relação aos requisitos normativos a serem cumpridos pela Proponente, previstos no **Anexo II da IN MCID nº 18, de 2025**, ao analisar a documentação constante da Proposta Técnica nº {num_proposta}, identificou-se a situação descrita no Quadro 3.
+**7.1.** Com relação aos requisitos documentais a serem cumpridos pela Proponente, ao analisar a documentação constante da Proposta Técnica nº {num_proposta}, identificou-se a situação descrita no Quadro 3 (checklist da operação de debêntures incentivadas).
 
 *Observação: A definição do perímetro da área de intervenção deve ser devidamente identificada e caracterizada, sendo obrigatória a sua delimitação em arquivo com extensão .kml ou .kmz, ou, alternativamente, sobre imagem de satélite ou fotografia aérea de alta resolução.*
 
@@ -1590,26 +1587,25 @@ Coordenação-Geral de Modernização Urbana
 
     # ---- Seção 8: Conclusão ----
     normas_alinhamento = (
-        "**Instrução Normativa MCID nº 18, de 25 de abril de 2025**, à "
-        "**Resolução CCFGTS nº 897, de 11 de setembro de 2018** e à "
-        "**Portaria MCID nº 359, de 9 de abril de 2025**"
+        "**Lei nº 12.431, de 3 de junho de 2011**, às **normas da Comissão de Valores Mobiliários (CVM)** "
+        "aplicáveis à emissão e ao **Decreto nº 12.210, de 3 de outubro de 2024**"
     )
 
     if pendencias:
         _itens_pend_str = "; ".join(f"({p['id']}) {p['doc']}" for p in pendencias)
         conclusao_txt = (
             f"**PENDÊNCIAS DOCUMENTAIS.** A proposta reúne os elementos técnicos suficientes "
-            f"para aprovação de mérito e está em conformidade normativa com a IN MCID nº 18/2025 e "
-            f"Resolução CCFGTS nº 897/2018. Contudo, recomenda-se **diligência** para apresentação "
+            f"para análise de mérito no âmbito de **debêntures incentivadas** (Lei nº 12.431/2011). "
+            f"Contudo, recomenda-se **diligência** para apresentação "
             f"dos seguintes itens: {_itens_pend_str}. "
             f"Após o atendimento dessas exigências, a viabilidade técnica poderá ser deferida."
         )
     else:
         conclusao_txt = (
-            "**VIABILIDADE TÉCNICA DEFERIDA.** A proposta reúne todos os elementos técnicos e "
-            "documentais exigidos, em plena conformidade com a IN MCID nº 18/2025 e Resolução "
-            "CCFGTS nº 897/2018. Recomenda-se o deferimento e encaminhamento ao Departamento de "
-            "Desenvolvimento Urbano."
+            "**VIABILIDADE TÉCNICA DEFERIDA.** A proposta reúne os elementos técnicos e "
+            "documentais exigidos para a operação de **debêntures incentivadas**, em conformidade "
+            "com a **Lei nº 12.431/2011** e a documentação regulatória aplicável. Recomenda-se o "
+            "deferimento e encaminhamento ao Departamento de Desenvolvimento Urbano."
         )
 
     capag_status = capag_result.get("detalhe", "N/D")
@@ -1629,18 +1625,15 @@ Coordenação-Geral de Modernização Urbana
 
     if _benef_quant:
         _beneficios_str = (
-            "a melhoria da qualidade de vida da população urbana, a democratização do acesso "
-            "a espaços públicos iluminados, " + ", ".join(_benef_quant) +
-            f" e a ampliação dos ganhos de eficientização por meio de investimentos na "
-            f"modernização tecnológica urbana, com a substituição integral dos pontos de "
-            f"iluminação pública por tecnologia LED e implantação de telegestão no Município de {municipio}"
+            "a melhoria da qualidade de vida da população urbana, " + ", ".join(_benef_quant) +
+            f" e os efeitos esperados da intervenção no Município de {municipio}, "
+            f"conforme quantificados na documentação da operação"
         )
     else:
         _beneficios_str = (
-            "a melhoria da qualidade de vida da população urbana, a democratização do acesso "
-            "a espaços públicos, infraestrutura, equipamentos e mobiliários urbanos, a otimização "
-            "do consumo de energia elétrica e a ampliação dos ganhos de eficientização por meio de "
-            f"investimentos na modernização tecnológica urbana do Município de {municipio}"
+            "a melhoria da qualidade de vida da população urbana, a modernização da infraestrutura "
+            "e dos serviços vinculados ao objeto do projeto e os efeitos esperados da intervenção "
+            f"no Município de {municipio}, conforme descritos na proposta"
         )
 
     sec8 = f"""\
@@ -1694,9 +1687,9 @@ Coordenador-Geral de Modernização Urbana — CGMUR/DAC/SNDUM-MCID"""
         f"\n---\n\n"
         f"*Documento gerado automaticamente em {datetime.now().strftime('%d/%m/%Y às %H:%M')}.*  \n"
         f"*Fontes consultadas: IBGE (servicodados.ibge.gov.br) | Tesouro Nacional — CAPAG | "
-        f"Ministério das Cidades — Legislação Pró-Cidades{idhm_str}{sebrae_str}{planalto_str}.*  \n"
-        f"*Base normativa: IN MCID nº 18/2025 | Res. CCFGTS nº 897/2018 | Lei nº 8.036/1990 | "
-        f"Portaria MCID nº 359/2025 | Decreto nº 12.210/2024 | Lei nº 13.089/2015 (Estatuto da Metrópole) | "
+        f"Ministério das Cidades — legislação em gov.br{idhm_str}{sebrae_str}{planalto_str}.*  \n"
+        f"*Base normativa (debêntures incentivadas): Lei nº 12.431/2011 | normas CVM aplicáveis | "
+        f"Decreto nº 12.210/2024 | Lei nº 13.089/2015 (Estatuto da Metrópole) | "
         f"Lei nº 10.257/2001 (Estatuto da Cidade).*"
     )
 

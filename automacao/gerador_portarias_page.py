@@ -301,7 +301,7 @@ def render_gerador_portarias(llm_config: LLMConfig) -> None:
                             f"**1.2.** Em síntese, o proponente busca captação via **debêntures incentivadas** para "
                             f"{dados.get('objeto', 'a intervenção proposta')}.\n\n"
                             f"**1.3.** Nesse sentido, solicita o enquadramento no arcabouço de **debêntures incentivadas**, "
-                            f"nos termos da legislação aplicável (ex.: Lei nº 12.431/2012 e normativos correlatos)."
+                            f"nos termos da legislação aplicável (ex.: Lei nº 12.431/2011 e normativos correlatos)."
                         )
 
                     progress.progress(0.82, text=f"Gerando Análise Normativa ({_ia_label})...")
@@ -785,14 +785,18 @@ def render_gerador_portarias(llm_config: LLMConfig) -> None:
             if st.session_state.dados_legis:
                 legis = st.session_state.dados_legis
                 st.subheader(SUBHEADER_LEGIS_MCID)
+                st.caption(
+                    "O parecer de **debêntures incentivadas** fundamenta-se na **Lei nº 12.431/2011** e normas CVM. "
+                    "Abaixo: conferência de vigência de normas no portal MCID (referência institucional)."
+                )
                 if legis.acessivel:
                     lc1, lc2 = st.columns(2)
                     lc1.metric(
-                        "IN MCID nº 18/2025",
+                        "IN MCID 18/2025 (portal — outros programas)",
                         "Vigente" if legis.in_18_2025_vigente else "Não localizada",
                     )
                     lc2.metric(
-                        "Res. CCFGTS nº 897/2018",
+                        "Res. CCFGTS 897/2018 (portal — FGTS)",
                         "Vigente" if legis.res_897_2018_vigente else "Não localizada",
                     )
                     with st.expander("Normativos encontrados"):
