@@ -135,6 +135,8 @@ source meu_ambiente/bin/activate          # Mac/Linux
 pip install -r requirements.txt
 ```
 
+**PDF “print” ou digitalizado (sem texto selecionável):** o sistema usa **PyMuPDF** para renderizar cada página e **Tesseract** (`pytesseract`) para OCR. Instale o binário [Tesseract](https://github.com/tesseract-ocr/tesseract) no sistema (no macOS: `brew install tesseract tesseract-lang`). Se o OCR extrair pouco texto e o provedor de IA tiver **visão** (ex.: Groq, OpenAI), o app tenta descrever a página automaticamente.
+
 **5. Rodar o app**
 ```bash
 streamlit run app.py

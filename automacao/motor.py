@@ -68,13 +68,115 @@ TEXTO_COMPETENCIA = """**2.1.** Com base na **Lei nº 14.600, de 19 de junho de 
 # Extracao PDF
 # ---------------------------------------------------------------------------
 
-def extrair_texto_pdf(arquivo) -> Optional[str]:
+# Texto abaixo deste limiar (após strip) dispara OCR página a página (print/digitalização)
+PDF_TEXTO_MINIMO_OCR = 40
+# Evita estouro de memória em PDFs enormes
+PDF_OCR_MAX_PAGES = 35
+
+
+def _ler_bytes_arquivo(arquivo) -> bytes:
+    """Lê todo o conteúdo de um file-like ou bytes; reposiciona seek(0) quando possível."""
+    if hasattr(arquivo, "read"):
+        if hasattr(arquivo, "seek"):
+            try:
+                arquivo.seek(0)
+            except Exception:
+                pass
+        raw = arquivo.read()
+        if isinstance(raw, str):
+            return raw.encode("utf-8")
+        return bytes(raw) if raw else b""
+    if isinstance(arquivo, (bytes, bytearray)):
+        return bytes(arquivo)
+    return b""
+
+
+def _extrair_pdf_paginas_imagem_ocr(
+    pdf_bytes: bytes,
+    llm_config: Optional["LLMConfig"] = None,
+    max_pages: int = PDF_OCR_MAX_PAGES,
+) -> str:
+    """
+    Renderiza cada página do PDF como imagem e extrai texto (OCR + visão por IA opcional).
+    Usado quando pypdf não encontra camada de texto (prints, capturas de tela, scans).
+    """
     try:
-        reader = PdfReader(arquivo)
-        return "\n".join(page.extract_text() or "" for page in reader.pages)
+        import fitz  # PyMuPDF
+    except ImportError:
+        logger.warning(
+            "PyMuPDF (pymupdf) não instalado — OCR de PDF indisponível. "
+            "Instale: pip install pymupdf"
+        )
+        return ""
+
+    partes: list[str] = []
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     except Exception as e:
-        logger.error("Falha ao extrair PDF: %s", e)
+        logger.error("PyMuPDF não abriu o PDF: %s", e)
+        return ""
+
+    try:
+        n = min(len(doc), max_pages)
+        zoom = 150 / 72.0
+        mat = fitz.Matrix(zoom, zoom)
+        for i in range(n):
+            page = doc.load_page(i)
+            try:
+                pix = page.get_pixmap(matrix=mat, alpha=False)
+            except Exception as e:
+                logger.warning("Falha ao rasterizar página %d: %s", i + 1, e)
+                continue
+            png_bytes = pix.tobytes("png")
+            nome_pag = f"pdf_p{i + 1}.png"
+            buf = io.BytesIO(png_bytes)
+            texto_ocr = _extrair_imagem_ocr(buf)
+            texto = texto_ocr
+            if len((texto_ocr or "").strip()) < 80 and llm_config and suporta_visao(llm_config):
+                texto_visao = _extrair_imagem_visao(png_bytes, nome_pag, llm_config)
+                if texto_visao and len(texto_visao.strip()) > len((texto_ocr or "").strip()):
+                    texto = texto_visao
+            if not texto or not str(texto).strip():
+                texto = texto_ocr or ""
+            if texto and str(texto).strip():
+                partes.append(f"--- Página {i + 1} ---\n{texto}".strip())
+            else:
+                logger.warning("PDF página %d: OCR e visão não retornaram texto", i + 1)
+    finally:
+        doc.close()
+
+    return "\n\n".join(p for p in partes if p)
+
+
+def extrair_texto_pdf(arquivo, llm_config: Optional["LLMConfig"] = None) -> Optional[str]:
+    """
+    Extrai texto: primeiro camada de texto (pypdf); se vazia ou muito curta, OCR por página
+    (PyMuPDF + pytesseract / visão por IA).
+    """
+    raw = _ler_bytes_arquivo(arquivo)
+    if not raw:
         return None
+
+    texto_direto = ""
+    try:
+        reader = PdfReader(io.BytesIO(raw))
+        texto_direto = "\n".join(page.extract_text() or "" for page in reader.pages)
+    except Exception as e:
+        logger.warning("pypdf não extraiu texto (%s); tentando OCR de páginas", e)
+
+    if len(texto_direto.strip()) >= PDF_TEXTO_MINIMO_OCR:
+        return texto_direto
+
+    texto_scan = _extrair_pdf_paginas_imagem_ocr(raw, llm_config)
+    if texto_scan and texto_scan.strip():
+        return (
+            "[Texto recuperado por OCR/digitalização — PDF com pouca ou nenhuma camada de texto]\n"
+            + texto_scan
+        )
+
+    if texto_direto.strip():
+        return texto_direto
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -391,7 +493,7 @@ def extrair_texto_arquivo(arquivo, nome: str,
     """Extrai texto de um único arquivo com base na extensão."""
     ext = nome.lower().rsplit(".", 1)[-1] if "." in nome else ""
     if ext == "pdf":
-        return extrair_texto_pdf(arquivo)
+        return extrair_texto_pdf(arquivo, llm_config)
     elif ext in ("html", "htm"):
         return _extrair_html(arquivo)
     elif ext in ("docx", "doc"):
@@ -444,6 +546,10 @@ def extrair_textos_multiplos(arquivos: list,
             ext = nome.lower().rsplit(".", 1)[-1]
             if ext in ("kml", "kmz"):
                 metadados["tem_kml_kmz"] = True
+            if ext == "pdf" and texto.startswith(
+                "[Texto recuperado por OCR/digitalização — PDF com pouca ou nenhuma camada de texto]"
+            ):
+                info["metodo_pdf"] = "ocr_ou_visao"
             if ext in _EXTENSOES_IMAGEM:
                 metadados["tem_imagens"] = True
                 # Identifica método de extração usado
