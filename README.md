@@ -86,6 +86,7 @@ Requisitos típicos: Python 3.11+, ambiente virtual criado pelo script, dependê
 - `automacao/COMO_INSTALAR_WINDOWS.md` — instalação detalhada em Windows
 - `automacao/README_INTRANET.md` — implantação em intranet / Docker
 - `automacao/CONFIGURAR_AZURE_OPENAI.md` — onde obter endpoint, chave e deployment no Portal Azure
+- `automacao/docs/ESTRUTURA_PARECER_DEBENTURES_SEI.md` — estrutura dos pareceres SEI (debêntures / Portaria 359)
 - `SECURITY.md` — reporte de vulnerabilidades e boas práticas
 
 ## Licença

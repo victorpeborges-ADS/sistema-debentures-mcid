@@ -145,14 +145,25 @@ _SECAO_KEYWORDS = {
     },
     3: {
         "nome": "Identificação da Proposta",
-        "inicio": ["PROPOSTA\n", "IDENTIFICAÇÃO DA PROPOSTA", "3.\nPRO"],
-        "fim_proximo": ["O MUNICÍPIO", "4.\nO M", "## 4."],
+        "inicio": [
+            "PROPOSTA\n",
+            "IDENTIFICAÇÃO DA PROPOSTA",
+            "3.\nPRO",
+            "QUADRO 1",
+        ],
+        "fim_proximo": ["O MUNICÍPIO", "4.\nO M", "## 4.", "DADOS DO MUNICÍPIO"],
     },
     4: {
         "nome": "O Município",
         # Usa apenas formas MAIÚSCULAS para não confundir com menções no corpo do texto
-        "inicio": ["O MUNICÍPIO DE ", "## 4. O MUN", "## 4. MUN", "4. O MUNICÍPIO"],
-        "fim_proximo": ["ANÁLISE DE ENQUADRAMENTO", "DESCRIÇÃO DA PROPOSTA",
+        "inicio": [
+            "O MUNICÍPIO DE ",
+            "DADOS DO MUNICÍPIO",
+            "## 4. O MUN",
+            "## 4. MUN",
+            "4. O MUNICÍPIO",
+        ],
+        "fim_proximo": ["ANÁLISE DE ENQUADRAMENTO", "DESCRIÇÃO DA PROPOSTA", "PROJETO E DOCUMENTAÇÃO",
                         "5.\nANÁL", "5.\nDESC", "## 5."],
     },
     5: {

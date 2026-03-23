@@ -21,6 +21,15 @@ from pypdf import PdfReader
 
 from llm_client import LLMConfig, gerar_texto, gerar_json as _llm_gerar_json, gerar_visao, suporta_visao
 from biblioteca import get_exemplos_fewshot, get_exemplos_secao, get_guia_estilo
+from debentures_estrutura import (
+    NORMATIVA_RESUMO_RODAPE,
+    SEC_ANALISE,
+    SEC_CHECKLIST,
+    SEC_CONCLUSAO,
+    SEC_IDENTIFICACAO,
+    SEC_PROJETO_DOC,
+    titulo_secao_municipio,
+)
 from fontes_publicas import DadosPlanalto
 
 logger = logging.getLogger(__name__)
@@ -1467,7 +1476,7 @@ Coordenação-Geral de Modernização Urbana
 
 **Referência:** Proposta Técnica nº {num_proposta} — **Debêntures incentivadas** (Lei nº 12.431/2011)  
 **Processo SEI:** {dados.get("processo_sei", "___")}  
-**Assunto:** Parecer de Mérito sobre enquadramento técnico de operação de **debêntures incentivadas** para {objeto[:180] + "..." if len(objeto) > 180 else objeto}, apresentado por {proponente}.
+**Assunto:** Parecer de Mérito sobre pedido de enquadramento de projeto **prioritário** com captação por **debêntures incentivadas** (Lei nº 12.431/2011) — {objeto[:160] + "..." if len(objeto) > 160 else objeto} — apresentado por {proponente}.
 
 ---"""
 
@@ -1488,7 +1497,7 @@ Coordenação-Geral de Modernização Urbana
         cnpj_agente = " (CNPJ 00.360.305/0001-04)"
 
     sec3 = f"""\
-## 3. PROPOSTA
+## 3. {SEC_IDENTIFICACAO}
 
 **3.1.** Os dados da Proposta Técnica nº {num_proposta} encontram-se apontados abaixo (Quadro 1).
 
@@ -1516,13 +1525,13 @@ Coordenação-Geral de Modernização Urbana
         municipio, uf, dados_ibge, dados_capag, dados_idh, dados_sebrae,
         contexto_objeto=contexto_objeto,
     )
-    sec4 = f"## 4. O MUNICÍPIO DE {municipio.upper()}\n\n{sec4_corpo}"
+    sec4 = f"## 4. {titulo_secao_municipio(municipio, uf)}\n\n{sec4_corpo}"
 
     # ---- Seção 5: Descrição da Proposta ----
     resp_tec = dados.get("responsavel_tecnico", "")
     contrato = dados.get("contrato_concessao", "")
     sec5 = f"""\
-## 5. DESCRIÇÃO DA PROPOSTA
+## 5. {SEC_PROJETO_DOC}
 
 **5.1.** {proponente} submeteu ao Ministério das Cidades a **Proposta Técnica nº {num_proposta}**, visando **estruturação de captação por debêntures incentivadas** nos termos da **Lei nº 12.431/2011**, no valor indicado de **{dados.get("valor_financiamento", "___")}** para {objeto}.{"" if not contrato else f" O Projeto decorre do **{contrato}** celebrado com o poder público municipal."}{"" if not resp_tec else f" O responsável técnico designado é **{resp_tec}**."}
 
@@ -1531,7 +1540,7 @@ Coordenação-Geral de Modernização Urbana
 **5.3.** O projeto encontra-se alinhado às diretrizes da Carta Brasileira de Cidades Inteligentes e à Política Nacional de Desenvolvimento Urbano, objetivando a melhoria da qualidade dos serviços públicos prestados à população, a otimização do consumo energético e a ampliação da segurança e do conforto nos espaços urbanos."""
 
     # ---- Seção 6: Análise de Enquadramento ----
-    sec6 = f"## 6. ANÁLISE DE ENQUADRAMENTO — DEBÊNTURES INCENTIVADAS\n\n{analise}"
+    sec6 = f"## 6. {SEC_ANALISE}\n\n{analise}"
 
     # ---- Seção 7: Atendimento Normativo (Checklist) ----
     checklist_rows = ""
@@ -1573,7 +1582,7 @@ Coordenação-Geral de Modernização Urbana
         )
 
     sec7 = f"""\
-## 7. ATENDIMENTO AOS CRITÉRIOS E ÀS CONDIÇÕES NORMATIVAS
+## 7. {SEC_CHECKLIST}
 
 **7.1.** Com relação aos requisitos documentais a serem cumpridos pela Proponente, ao analisar a documentação constante da Proposta Técnica nº {num_proposta}, identificou-se a situação descrita no Quadro 3 (checklist da operação de debêntures incentivadas).
 
@@ -1637,7 +1646,7 @@ Coordenação-Geral de Modernização Urbana
         )
 
     sec8 = f"""\
-## 8. CONCLUSÃO
+## 8. {SEC_CONCLUSAO}
 
 **8.1.** Com base no exposto, o Projeto encontra-se alinhado aos princípios e diretrizes da **Carta Brasileira de Cidades Inteligentes**, da {normas_alinhamento}.
 
@@ -1688,7 +1697,7 @@ Coordenador-Geral de Modernização Urbana — CGMUR/DAC/SNDUM-MCID"""
         f"*Documento gerado automaticamente em {datetime.now().strftime('%d/%m/%Y às %H:%M')}.*  \n"
         f"*Fontes consultadas: IBGE (servicodados.ibge.gov.br) | Tesouro Nacional — CAPAG | "
         f"Ministério das Cidades — legislação em gov.br{idhm_str}{sebrae_str}{planalto_str}.*  \n"
-        f"*Base normativa (debêntures incentivadas): Lei nº 12.431/2011 | normas CVM aplicáveis | "
+        f"*Base normativa (debêntures / infraestrutura): {NORMATIVA_RESUMO_RODAPE} | "
         f"Decreto nº 12.210/2024 | Lei nº 13.089/2015 (Estatuto da Metrópole) | "
         f"Lei nº 10.257/2001 (Estatuto da Cidade).*"
     )
