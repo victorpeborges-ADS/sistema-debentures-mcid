@@ -1,0 +1,25 @@
+# Dependências e Build (O maior ralo de tokens)
+node_modules/
+dist/
+build/
+.next/
+out/
+
+# Artefactos de QA e Testes
+cypress/videos/
+cypress/screenshots/
+coverage/
+*.log
+
+# Bloqueio de Segurança (Obrigatório)
+.env
+.env.local
+.env.*
+*.pem
+credentials/
+keys/
+
+# Bancos e Dados Brutos (Não deixe a IA ler bancos locais)
+*.sqlite
+*.db
+/data/

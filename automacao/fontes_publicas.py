@@ -38,6 +38,41 @@ TIMEOUT = 15
 IBGE_BASE = "https://servicodados.ibge.gov.br/api"
 SIDRA_BASE = "https://apisidra.ibge.gov.br"
 
+# Lista estática (API de localidades pode falhar por rede/firewall/proxy corporativo).
+_IBGE_UF_TUPLAS = [
+    (11, "RO", "Rondônia"),
+    (12, "AC", "Acre"),
+    (13, "AM", "Amazonas"),
+    (14, "RR", "Roraima"),
+    (15, "PA", "Pará"),
+    (16, "AP", "Amapá"),
+    (17, "TO", "Tocantins"),
+    (21, "MA", "Maranhão"),
+    (22, "PI", "Piauí"),
+    (23, "CE", "Ceará"),
+    (24, "RN", "Rio Grande do Norte"),
+    (25, "PB", "Paraíba"),
+    (26, "PE", "Pernambuco"),
+    (27, "AL", "Alagoas"),
+    (28, "SE", "Sergipe"),
+    (29, "BA", "Bahia"),
+    (31, "MG", "Minas Gerais"),
+    (32, "ES", "Espírito Santo"),
+    (33, "RJ", "Rio de Janeiro"),
+    (35, "SP", "São Paulo"),
+    (41, "PR", "Paraná"),
+    (42, "SC", "Santa Catarina"),
+    (43, "RS", "Rio Grande do Sul"),
+    (50, "MS", "Mato Grosso do Sul"),
+    (51, "MT", "Mato Grosso"),
+    (52, "GO", "Goiás"),
+    (53, "DF", "Distrito Federal"),
+]
+IBGE_ESTADOS_FALLBACK: list[dict] = sorted(
+    ({"id": i, "sigla": s, "nome": n} for i, s, n in _IBGE_UF_TUPLAS),
+    key=lambda x: x["nome"],
+)
+
 SINOPSE_IDS = {
     29166: "populacao_censo",
     29168: "densidade_demografica",
@@ -76,8 +111,12 @@ FROTA_NOMES = [
 
 
 def _get_json(url: str) -> Optional[dict | list]:
+    headers = {
+        "User-Agent": "Sistema-Debentures-MCID/1.0 (+https://github.com/victorpeborges-ADS/sistema-debentures-mcid)",
+        "Accept": "application/json",
+    }
     try:
-        r = requests.get(url, timeout=TIMEOUT)
+        r = requests.get(url, timeout=TIMEOUT, headers=headers)
         r.raise_for_status()
         return r.json()
     except Exception as e:
@@ -95,7 +134,8 @@ def _latest_value(serie: dict) -> tuple[Optional[str], Optional[str]]:
 def ibge_listar_estados() -> list[dict]:
     data = _get_json(f"{IBGE_BASE}/v1/localidades/estados")
     if not data:
-        return []
+        logger.info("IBGE estados: usando lista estática (API indisponível).")
+        return list(IBGE_ESTADOS_FALLBACK)
     return sorted(data, key=lambda x: x["nome"])
 
 

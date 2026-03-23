@@ -10,9 +10,9 @@ from datetime import datetime
 import requests
 import streamlit as st
 
+from ui_municipio import selecionar_municipio_ibge
 from fontes_publicas import (
     ibge_listar_estados,
-    ibge_listar_municipios,
     ibge_dados_completos,
     capag_buscar_municipio,
     legislacao_verificar,
@@ -321,22 +321,24 @@ with _col_trabalho:
         with col_mun:
             estados = ibge_listar_estados()
             uf_opcoes = {e["sigla"]: e for e in estados}
-            uf_rapido = st.selectbox(
-                "UF do município beneficiado:",
-                options=list(uf_opcoes.keys()),
-                index=list(uf_opcoes.keys()).index("PR") if "PR" in uf_opcoes else 0,
-                key="rapido_uf",
-            )
-            if uf_rapido:
-                uf_obj = uf_opcoes[uf_rapido]
-                municipios = ibge_listar_municipios(uf_obj["id"])
-                mun_map = {m["nome"]: m for m in municipios}
-                mun_rapido = st.selectbox(
-                    "Município beneficiado:",
-                    options=list(mun_map.keys()),
-                    key="rapido_mun",
+            if not uf_opcoes:
+                st.error("Lista de UFs indisponível. Verifique a conexão com a internet.")
+                municipio_rapido = None
+            else:
+                uf_rapido = st.selectbox(
+                    "UF do município beneficiado:",
+                    options=sorted(uf_opcoes.keys()),
+                    index=sorted(uf_opcoes.keys()).index("PR") if "PR" in uf_opcoes else 0,
+                    key="rapido_uf",
                 )
-                municipio_rapido = mun_map.get(mun_rapido) if mun_rapido else None
+                municipio_rapido = None
+                if uf_rapido:
+                    uf_obj = uf_opcoes[uf_rapido]
+                    municipio_rapido = selecionar_municipio_ibge(
+                        uf_obj,
+                        label="Município beneficiado:",
+                        key_prefix="parecer_rapido",
+                    )
 
         # Painel de arquivos carregados
         if uploads_rapido:
@@ -811,21 +813,26 @@ with _col_trabalho:
         with col_uf:
             estados = ibge_listar_estados()
             uf_opcoes = {e["sigla"]: e for e in estados}
-            uf_sel = st.selectbox(
-                "UF:",
-                options=list(uf_opcoes.keys()),
-                index=list(uf_opcoes.keys()).index("MG") if "MG" in uf_opcoes else 0,
-            )
+            if not uf_opcoes:
+                st.error("Lista de UFs indisponível. Verifique a conexão com a internet.")
+                uf_sel = None
+            else:
+                uf_sel = st.selectbox(
+                    "UF:",
+                    options=sorted(uf_opcoes.keys()),
+                    index=sorted(uf_opcoes.keys()).index("MG") if "MG" in uf_opcoes else 0,
+                )
             st.session_state.uf_selecionada = uf_sel
 
         with col_mun:
             if uf_sel:
                 uf_obj = uf_opcoes[uf_sel]
-                municipios = ibge_listar_municipios(uf_obj["id"])
-                mun_map = {m["nome"]: m for m in municipios}
-                mun_sel = st.selectbox("Município:", options=list(mun_map.keys()))
-                if mun_sel:
-                    st.session_state.municipio_selecionado = mun_map[mun_sel]
+                mun = selecionar_municipio_ibge(
+                    uf_obj,
+                    label="Município:",
+                    key_prefix="parecer_tab2",
+                )
+                st.session_state.municipio_selecionado = mun
 
         if st.button("Buscar dados do município", type="primary"):
             mun = st.session_state.municipio_selecionado
