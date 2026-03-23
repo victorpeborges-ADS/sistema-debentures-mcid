@@ -617,10 +617,18 @@ def extrair_textos_multiplos(arquivos: list,
             info["erro"] = "Não foi possível extrair texto"
             extf = nome.lower().rsplit(".", 1)[-1] if "." in nome else ""
             if extf == "pdf":
+                try:
+                    import fitz  # noqa: F401
+
+                    _fz = "PyMuPDF instalado."
+                except ImportError:
+                    _fz = "PyMuPDF em falta — execute: pip install pymupdf"
                 info["erro"] = (
                     "PDF sem texto extraível (imagem/print). "
-                    "Instale: pip install pymupdf e o Tesseract no sistema (ex.: brew install tesseract tesseract-lang). "
-                    "Com Mistral (API key), o sistema usa Pixtral para ler páginas quando o OCR local falha."
+                    f"{_fz} "
+                    "Opcional: Tesseract no sistema (brew install tesseract tesseract-lang) para OCR local. "
+                    "Com Mistral (API key), o sistema envia a página à API Mistral (visão multimodal); "
+                    "atualize o app se ainda falhar (correção de formato da API)."
                 )
 
         metadados["arquivos"].append(info)

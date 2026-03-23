@@ -58,7 +58,8 @@ class LLMConfig:
     mistral_api_key: str = ""
     mistral_model: str = "mistral-small-latest"
     # Modelo multimodal só para OCR/PDF e imagens (Pixtral); o texto do app usa mistral_model
-    mistral_vision_model: str = "pixtral-12b-2409"
+    # Modelo multimodal (docs Mistral: mistral-small-latest aceita imagens via API)
+    mistral_vision_model: str = "mistral-small-latest"
 
     # ---- Geral ----
     timeout: int = 600              # segundos (relevante para Ollama sem GPU)
@@ -144,7 +145,7 @@ _MODELOS_VISAO = {
     "azure_openai": None,          # usa o deployment configurado
     "anthropic":    "claude-3-5-sonnet-20241022",
     "groq":         "llama-3.2-11b-vision-preview",
-    "mistral":      "pixtral-12b-2409",  # só para gerar_visao; texto usa mistral_model
+    "mistral":      "mistral-small-latest",  # gerar_visao; texto usa mistral_model
     "ollama":       None,          # depende do modelo (llava, etc.)
 }
 
@@ -258,29 +259,90 @@ def _visao_anthropic(b64: str, media_type: str, prompt: str, config: LLMConfig) 
 
 
 def _visao_mistral(b64: str, media_type: str, prompt: str, config: LLMConfig) -> Optional[str]:
-    """Pixtral via API compatível OpenAI (OCR / PDF rasterizado)."""
-    try:
-        from openai import OpenAI
-    except ImportError:
-        return None
+    """
+    Mistral Chat Completions — visão multimodal.
+
+    A documentação oficial usa ``image_url`` como *string* (data URL), não como
+    ``{"url": ...}`` (formato OpenAI). O cliente OpenAI pode enviar o payload
+    incorreto para api.mistral.ai, por isso usamos HTTP direto.
+    Ver: https://docs.mistral.ai/capabilities/vision/
+    """
+    import base64 as _b64
+    import io as _io
+
     if not config.mistral_api_key:
         return None
-    modelo = (config.mistral_vision_model or "pixtral-12b-2409").strip()
-    client = OpenAI(
-        api_key=config.mistral_api_key,
-        base_url="https://api.mistral.ai/v1",
-        timeout=config.timeout,
-    )
+
+    def _post(modelo: str, data_url: str) -> Optional[str]:
+        try:
+            r = requests.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {config.mistral_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": modelo,
+                    "max_tokens": 4096,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": prompt},
+                                # Formato Mistral: image_url é a data URL completa (string)
+                                {"type": "image_url", "image_url": data_url},
+                            ],
+                        }
+                    ],
+                },
+                timeout=config.timeout,
+            )
+            if r.status_code != 200:
+                logger.warning(
+                    "Mistral visão HTTP %s modelo=%s: %s",
+                    r.status_code,
+                    modelo,
+                    (r.text or "")[:900],
+                )
+                return None
+            j = r.json()
+            c = j["choices"][0]["message"].get("content")
+            return c if (c and str(c).strip()) else None
+        except Exception as e:
+            logger.warning("Mistral visão (modelo %s): %s", modelo, e)
+            return None
+
+    preferido = (config.mistral_vision_model or "mistral-small-latest").strip()
+    modelos: list[str] = []
+    for m in (preferido, "mistral-small-latest", "pixtral-12b-2409"):
+        if m and m not in modelos:
+            modelos.append(m)
+
     data_url = f"data:{media_type};base64,{b64}"
-    resp = client.chat.completions.create(
-        model=modelo,
-        max_tokens=4096,
-        messages=[{"role": "user", "content": [
-            {"type": "text", "text": prompt},
-            {"type": "image_url", "image_url": {"url": data_url}},
-        ]}],
-    )
-    return resp.choices[0].message.content
+    for modelo in modelos:
+        out = _post(modelo, data_url)
+        if out:
+            return out
+
+    # Fallback: converter PNG → JPEG (menor e mais compatível)
+    if "png" in (media_type or "").lower():
+        try:
+            from PIL import Image
+
+            raw = _b64.b64decode(b64)
+            img = Image.open(_io.BytesIO(raw)).convert("RGB")
+            buf = _io.BytesIO()
+            img.save(buf, format="JPEG", quality=88)
+            jpeg_b64 = _b64.b64encode(buf.getvalue()).decode()
+            data_url_jpg = f"data:image/jpeg;base64,{jpeg_b64}"
+            for modelo in modelos:
+                out = _post(modelo, data_url_jpg)
+                if out:
+                    return out
+        except Exception as e:
+            logger.warning("Mistral visão conversão JPEG: %s", e)
+
+    return None
 
 
 def _visao_groq(b64: str, media_type: str, prompt: str, config: LLMConfig) -> Optional[str]:
