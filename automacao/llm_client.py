@@ -57,6 +57,8 @@ class LLMConfig:
     # ---- Mistral AI (gratuito, europeu, GDPR) ----
     mistral_api_key: str = ""
     mistral_model: str = "mistral-small-latest"
+    # Modelo multimodal só para OCR/PDF e imagens (Pixtral); o texto do app usa mistral_model
+    mistral_vision_model: str = "pixtral-12b-2409"
 
     # ---- Geral ----
     timeout: int = 600              # segundos (relevante para Ollama sem GPU)
@@ -142,7 +144,7 @@ _MODELOS_VISAO = {
     "azure_openai": None,          # usa o deployment configurado
     "anthropic":    "claude-3-5-sonnet-20241022",
     "groq":         "llama-3.2-11b-vision-preview",
-    "mistral":      None,          # Mistral não suporta visão via API ainda
+    "mistral":      "pixtral-12b-2409",  # só para gerar_visao; texto usa mistral_model
     "ollama":       None,          # depende do modelo (llava, etc.)
 }
 
@@ -179,6 +181,8 @@ def gerar_visao(
             return _visao_groq(imagem_b64, media_type, prompt, config)
         elif config.provider == "ollama":
             return _visao_ollama(imagem_b64, media_type, prompt, config)
+        elif config.provider == "mistral":
+            return _visao_mistral(imagem_b64, media_type, prompt, config)
         else:
             logger.info("Provedor %s não suporta visão.", config.provider)
             return None
@@ -193,7 +197,7 @@ def suporta_visao(config: LLMConfig) -> bool:
         m = config.ollama_model.lower()
         return any(k in m for k in ("llava", "vision", "bakllava", "moondream"))
     if config.provider == "mistral":
-        return False
+        return bool(config.mistral_api_key)
     return _MODELOS_VISAO.get(config.provider) is not None
 
 
@@ -251,6 +255,32 @@ def _visao_anthropic(b64: str, media_type: str, prompt: str, config: LLMConfig) 
         ]}],
     )
     return msg.content[0].text
+
+
+def _visao_mistral(b64: str, media_type: str, prompt: str, config: LLMConfig) -> Optional[str]:
+    """Pixtral via API compatível OpenAI (OCR / PDF rasterizado)."""
+    try:
+        from openai import OpenAI
+    except ImportError:
+        return None
+    if not config.mistral_api_key:
+        return None
+    modelo = (config.mistral_vision_model or "pixtral-12b-2409").strip()
+    client = OpenAI(
+        api_key=config.mistral_api_key,
+        base_url="https://api.mistral.ai/v1",
+        timeout=config.timeout,
+    )
+    data_url = f"data:{media_type};base64,{b64}"
+    resp = client.chat.completions.create(
+        model=modelo,
+        max_tokens=4096,
+        messages=[{"role": "user", "content": [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": data_url}},
+        ]}],
+    )
+    return resp.choices[0].message.content
 
 
 def _visao_groq(b64: str, media_type: str, prompt: str, config: LLMConfig) -> Optional[str]:

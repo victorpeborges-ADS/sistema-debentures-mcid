@@ -135,7 +135,7 @@ source meu_ambiente/bin/activate          # Mac/Linux
 pip install -r requirements.txt
 ```
 
-**PDF “print” ou digitalizado (sem texto selecionável):** o sistema usa **PyMuPDF** para renderizar cada página e **Tesseract** (`pytesseract`) para OCR. Instale o binário [Tesseract](https://github.com/tesseract-ocr/tesseract) no sistema (no macOS: `brew install tesseract tesseract-lang`). Se o OCR extrair pouco texto e o provedor de IA tiver **visão** (ex.: Groq, OpenAI), o app tenta descrever a página automaticamente.
+**PDF “print” ou digitalizado (sem texto selecionável):** o sistema usa **PyMuPDF** para renderizar cada página, **Tesseract** (`pytesseract`) com vários modos de OCR e, se ainda faltar texto, **visão por IA** (Pixtral na **Mistral**, Groq, OpenAI, etc.). Instale o binário [Tesseract](https://github.com/tesseract-ocr/tesseract) no sistema (no macOS: `brew install tesseract tesseract-lang`). Com **Mistral** e API key configurada, o Pixtral lê páginas mesmo sem Tesseract local (envia a imagem à API).
 
 **5. Rodar o app**
 ```bash

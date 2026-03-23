@@ -74,6 +74,57 @@ PDF_TEXTO_MINIMO_OCR = 40
 PDF_OCR_MAX_PAGES = 35
 
 
+def _pdf_camada_texto_razoavel(texto: str) -> bool:
+    """
+    Evita tratar como "PDF com texto" resíduos curtos ou metadados quando o corpo é imagem.
+    Se falhar, dispara OCR (print / captura de tela).
+    """
+    t = (texto or "").strip()
+    if len(t) < PDF_TEXTO_MINIMO_OCR:
+        return False
+    letras = sum(1 for c in t if c.isalpha())
+    if letras < 28:
+        return False
+    if len(t.split()) < 6:
+        return False
+    return True
+
+
+def _ocr_png_bytes_robusto(png_bytes: bytes) -> str:
+    """
+    OCR agressivo para páginas rasterizadas (vários PSM + contraste + ampliação leve).
+    """
+    try:
+        import pytesseract
+        from PIL import Image, ImageEnhance
+    except ImportError:
+        return ""
+
+    melhor = ""
+    try:
+        img = Image.open(io.BytesIO(png_bytes)).convert("L")
+        w, h = img.size
+        if w < 1600:
+            z = 1.6
+            img = img.resize((int(w * z), int(h * z)), Image.Resampling.LANCZOS)
+        img = ImageEnhance.Contrast(img).enhance(1.4)
+        for psm in ("3", "6", "4", "11"):
+            for lang in ("por+eng", "por", "eng"):
+                try:
+                    t = pytesseract.image_to_string(
+                        img, lang=lang, config=f"--psm {psm}"
+                    ).strip()
+                except Exception:
+                    t = ""
+                if len(t) > len(melhor):
+                    melhor = t
+                if len(t) >= 100:
+                    return t
+    except Exception as e:
+        logger.warning("OCR robusto (PDF): %s", e)
+    return melhor
+
+
 def _ler_bytes_arquivo(arquivo) -> bytes:
     """Lê todo o conteúdo de um file-like ou bytes; reposiciona seek(0) quando possível."""
     if hasattr(arquivo, "read"):
@@ -118,7 +169,7 @@ def _extrair_pdf_paginas_imagem_ocr(
 
     try:
         n = min(len(doc), max_pages)
-        zoom = 150 / 72.0
+        zoom = 200 / 72.0
         mat = fitz.Matrix(zoom, zoom)
         for i in range(n):
             page = doc.load_page(i)
@@ -129,8 +180,9 @@ def _extrair_pdf_paginas_imagem_ocr(
                 continue
             png_bytes = pix.tobytes("png")
             nome_pag = f"pdf_p{i + 1}.png"
-            buf = io.BytesIO(png_bytes)
-            texto_ocr = _extrair_imagem_ocr(buf)
+            texto_ocr = _ocr_png_bytes_robusto(png_bytes) or _extrair_imagem_ocr(
+                io.BytesIO(png_bytes)
+            )
             texto = texto_ocr
             if len((texto_ocr or "").strip()) < 80 and llm_config and suporta_visao(llm_config):
                 texto_visao = _extrair_imagem_visao(png_bytes, nome_pag, llm_config)
@@ -164,7 +216,7 @@ def extrair_texto_pdf(arquivo, llm_config: Optional["LLMConfig"] = None) -> Opti
     except Exception as e:
         logger.warning("pypdf não extraiu texto (%s); tentando OCR de páginas", e)
 
-    if len(texto_direto.strip()) >= PDF_TEXTO_MINIMO_OCR:
+    if _pdf_camada_texto_razoavel(texto_direto):
         return texto_direto
 
     texto_scan = _extrair_pdf_paginas_imagem_ocr(raw, llm_config)
@@ -563,6 +615,13 @@ def extrair_textos_multiplos(arquivos: list,
                     info["metodo_imagem"] = "sem_extracao"
         else:
             info["erro"] = "Não foi possível extrair texto"
+            extf = nome.lower().rsplit(".", 1)[-1] if "." in nome else ""
+            if extf == "pdf":
+                info["erro"] = (
+                    "PDF sem texto extraível (imagem/print). "
+                    "Instale: pip install pymupdf e o Tesseract no sistema (ex.: brew install tesseract tesseract-lang). "
+                    "Com Mistral (API key), o sistema usa Pixtral para ler páginas quando o OCR local falha."
+                )
 
         metadados["arquivos"].append(info)
 

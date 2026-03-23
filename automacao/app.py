@@ -475,7 +475,14 @@ with _col_trabalho:
                 ok = [a for a in meta["arquivos"] if a["ok"]]
                 erros = [a for a in meta["arquivos"] if not a["ok"]]
                 if erros:
-                    st.warning(f"⚠️ {len(erros)} arquivo(s) não processado(s): {', '.join(a['nome'] for a in erros)}")
+                    _wl = (
+                        f"⚠️ {len(erros)} arquivo(s) não processado(s): "
+                        f"{', '.join(a['nome'] for a in erros)}"
+                    )
+                    _e0 = erros[0].get("erro")
+                    if _e0:
+                        _wl += "\n\n" + _e0
+                    st.warning(_wl)
                 if not texto_consolidado:
                     st.error("Nenhum texto extraído dos arquivos enviados.")
                     st.stop()
