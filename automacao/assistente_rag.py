@@ -19,11 +19,15 @@ CategoryRepo = Literal["parecer", "portaria"]
 
 SYSTEM_PROMPT_RAG_RESTRITO = """Você é um assistente especializado em análise de documentos administrativos.
 
+HIERARQUIA DE FONTES (obrigatória):
+1) CONTEXTO DO CASO EM ANÁLISE — inclui o instrumento gerado (Markdown) e, quando existir, a extração da proposta/documentos. É a FONTE DE VERDADE para o caso atual (município, valores, CAPAG, IBGE, objeto, percentuais).
+2) REPOSITÓRIO DE REFERÊNCIA — textos de outros processos apenas como exemplo de redação ou estrutura. NUNCA use números, percentuais, nomes de município ou dados de outro processo do repositório para responder sobre o caso em análise. Se o repositório contradizer o CONTEXTO DO CASO, prevalece sempre o CONTEXTO DO CASO.
+
 REGRAS ABSOLUTAS:
-1) Você só pode usar informações que apareçam explicitamente no CONTEXTO fornecido abaixo (documento ativo e, se existir, bloco REPOSITÓRIO).
+1) Você só pode usar informações que apareçam explicitamente no CONTEXTO abaixo (blocos do caso + repositório secundário).
 2) Se a informação não estiver no contexto, responda exatamente: "Não consta no documento fornecido."
 3) É PROIBIDO inventar dados, números, artigos, páginas ou trechos que não estejam no contexto.
-4) Não misture categorias: se o bloco REPOSITÓRIO estiver presente, trate-o apenas como material de referência do mesmo tipo de fluxo (parecer ou portaria); não invente conteúdo de outro repositório.
+4) Perguntas sobre "de onde saiu" um dado do parecer: cite primeiro trechos do bloco "PARECER/PORTARIA GERADO" ou "PROPOSTA E DOCUMENTOS CONSOLIDADOS"; só mencione o repositório se o utilizador pedir comparação com pareceres anteriores ou estilo.
 5) Toda resposta que extrair um dado do contexto DEVE incluir a justificativa no formato de citação direta abaixo.
 
 FORMATO OBRIGATÓRIO DE CITAÇÃO (use sempre que houver extração de conteúdo):
@@ -42,17 +46,63 @@ def montar_contexto_para_llm(
 ) -> str:
     base = (
         f"NOME_DO_DOCUMENTO: {nome_documento}\n\n"
-        f"CONTEXTO_DO_DOCUMENTO (fonte principal):\n"
+        f"CONTEXTO DO CASO EM ANÁLISE (prioridade máxima — dados do processo atual):\n"
         f"{texto_documento}"
     )
     tr = (texto_repositorio or "").strip()
     if tr:
         base += (
-            "\n\n---\nREPOSITÓRIO DE REFERÊNCIA (mesma categoria do fluxo; "
-            "use apenas para cruzar estilo ou trechos explícitos):\n"
+            "\n\n---\nREPOSITÓRIO DE REFERÊNCIA (secundário — estilo/redação; "
+            "não usar dados numéricos ou de outros municípios como se fossem deste caso):\n"
             f"{tr}"
         )
     return base
+
+
+def texto_documento_ativo_para_rag(
+    markdown_gerado: str,
+    texto_consolidado: str,
+    *,
+    max_chars_consolidado: int = 100_000,
+) -> tuple[str, str]:
+    """
+    Junta parecer/portaria gerado com o texto bruto consolidado da proposta (quando existir),
+    para o assistente priorizar análise do caso e não só o repositório.
+    """
+    md = (markdown_gerado or "").strip()
+    tx = (texto_consolidado or "").strip()
+    if tx and len(tx) > max_chars_consolidado:
+        tx = (
+            tx[:max_chars_consolidado]
+            + "\n\n[... texto consolidado truncado por limite de contexto ...]"
+        )
+    blocos: list[str] = []
+    if md:
+        blocos.append(
+            "=== PARECER/PORTARIA GERADO (Markdown) — texto do instrumento; cite daqui para redação final ===\n"
+            + md
+        )
+    if tx:
+        blocos.append(
+            "=== PROPOSTA E DOCUMENTOS CONSOLIDADOS (extração) — projeto, município, anexos e bases da análise ===\n"
+            + tx
+        )
+    if not blocos:
+        return "", "Documento vazio"
+    if len(blocos) > 1:
+        return "\n\n".join(blocos), "Caso atual (gerado + proposta consolidada)"
+    return blocos[0], "Parecer/portaria gerado" if md else "Proposta consolidada"
+
+
+def _limite_chars_repositorio_chat(tamanho_doc: int) -> int:
+    """Quanto maior o documento do caso, menor o repositório (evita deslocar atenção da LLM)."""
+    if tamanho_doc > 80_000:
+        return 18_000
+    if tamanho_doc > 40_000:
+        return 28_000
+    if tamanho_doc > 15_000:
+        return 42_000
+    return 60_000
 
 
 def responder_chat_rag(
@@ -63,12 +113,15 @@ def responder_chat_rag(
     *,
     categoria_repositorio: Optional[CategoryRepo] = None,
 ) -> Optional[str]:
+    doc = (texto_documento or "").strip()
     repo_txt = ""
     if categoria_repositorio:
         from repository_store import texto_repositorio_concatenado
 
-        repo_txt = texto_repositorio_concatenado(categoria_repositorio)
-    doc = (texto_documento or "").strip()
+        repo_txt = texto_repositorio_concatenado(
+            categoria_repositorio,
+            max_chars=_limite_chars_repositorio_chat(len(doc)),
+        )
     if not doc and not (repo_txt or "").strip():
         return None
     if not doc and repo_txt:
@@ -93,14 +146,14 @@ def render_painel_chat_documento(
     """
     st.markdown("##### Assistente ao documento")
     cap = (
-        "RAG restrito: respostas com base no documento em contexto"
+        "**Prioridade:** parecer/portaria gerado + proposta consolidada. "
         + (
-            " e no **Repositório de Pareceres**."
+            "Repositório de pareceres só como referência de estilo."
             if categoria_repositorio == "parecer"
             else (
-                " e no **Repositório de Portarias**."
+                "Repositório de portarias só como referência de estilo."
                 if categoria_repositorio == "portaria"
-                else "."
+                else ""
             )
         )
         + " Citações obrigatórias quando houver extração."

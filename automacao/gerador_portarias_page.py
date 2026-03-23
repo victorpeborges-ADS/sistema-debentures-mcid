@@ -40,7 +40,7 @@ from motor import (
     conformidade_texto,
     gerar_portaria_md,
 )
-from assistente_rag import render_painel_chat_documento
+from assistente_rag import render_painel_chat_documento, texto_documento_ativo_para_rag
 from ui_navegacao import render_aba_enviar_ao_repositorio
 
 _provider_curto = {
@@ -993,13 +993,10 @@ def render_gerador_portarias(llm_config: LLMConfig) -> None:
             )
     with _col_assistente:
         def _ctx_port_doc():
-            md = st.session_state.get("portaria_md") or ""
-            tx = st.session_state.get("texto_pdf") or ""
-            if md.strip():
-                return (md, "Portaria gerada (Markdown)")
-            if (tx or "").strip():
-                return (tx, "Proposta / texto consolidado")
-            return ("", "Documento vazio")
+            return texto_documento_ativo_para_rag(
+                st.session_state.get("portaria_md") or "",
+                st.session_state.get("texto_pdf") or "",
+            )
 
         render_painel_chat_documento(
             llm_config,

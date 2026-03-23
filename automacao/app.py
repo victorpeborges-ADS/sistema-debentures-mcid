@@ -53,7 +53,7 @@ from motor import (
     conformidade_texto,
     gerar_parecer_md,
 )
-from assistente_rag import render_painel_chat_documento
+from assistente_rag import render_painel_chat_documento, texto_documento_ativo_para_rag
 from ui_navegacao import (
     render_aba_enviar_ao_repositorio,
     render_repositorio_pareceres,
@@ -1236,13 +1236,10 @@ with _col_trabalho:
 
 with _col_assistente:
     def _ctx_doc_ativo():
-        md = st.session_state.get("parecer_md") or ""
-        tx = st.session_state.get("texto_pdf") or ""
-        if md.strip():
-            return (md, "Parecer gerado (Markdown)")
-        if (tx or "").strip():
-            return (tx, "Proposta / texto consolidado")
-        return ("", "Documento vazio")
+        return texto_documento_ativo_para_rag(
+            st.session_state.get("parecer_md") or "",
+            st.session_state.get("texto_pdf") or "",
+        )
 
     render_painel_chat_documento(
         llm_config,
