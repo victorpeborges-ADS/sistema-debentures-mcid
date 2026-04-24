@@ -13,7 +13,7 @@ psycopg2-binary>=2.9.9
 # Provedores LLM em nuvem (privacidade garantida — dados não usados para treino)
 openai>=1.30.0
 anthropic>=0.28.0
-groq>=0.9.0
+groq>=1.2.0
 mistralai>=1.0.0
 
 # Imagens: OCR e manipulação
