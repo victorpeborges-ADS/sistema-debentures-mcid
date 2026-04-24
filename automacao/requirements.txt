@@ -1,7 +1,7 @@
 streamlit>=1.30.0
 pypdf>=4.0.0
 # Renderizar páginas de PDF para OCR (prints / digitalizações sem camada de texto)
-pymupdf>=1.24.0
+pymupdf>=1.27.2.3
 requests>=2.28.0
 openpyxl>=3.1.0
 pandas>=2.0.0
