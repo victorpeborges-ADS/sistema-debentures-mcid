@@ -18,5 +18,5 @@ mistralai>=1.0.0
 
 # Imagens: OCR e manipulação
 # Pillow é obrigatório; pytesseract requer Tesseract instalado no SO (opcional)
-Pillow>=10.0.0
+Pillow>=12.2.0
 pytesseract>=0.3.10
